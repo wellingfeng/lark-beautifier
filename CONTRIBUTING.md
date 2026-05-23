@@ -7,12 +7,19 @@ npm install
 npm test
 npm run check
 npm run lint:md
+npm run check:skills
 ```
 
 Run the standalone skill self-check:
 
 ```bash
 node skills/lark-beautifier/scripts/self-check.mjs
+```
+
+The Claude Code skill copy is kept at `.claude/skills/lark-beautifier`. When changing the skill implementation, keep it synchronized with `skills/lark-beautifier`.
+
+```bash
+npm run check:skills
 ```
 
 Validate the skill metadata:

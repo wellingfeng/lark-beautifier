@@ -1,5 +1,7 @@
 # Lark Beautifier
 
+[中文说明](README.zh-CN.md)
+
 Convert ordinary Markdown into Lark-friendly Markdown for Feishu/Lark docs, and guide safe write-back to real Feishu documents through `@larksuiteoapi/lark-mcp` OAuth + Feishu OpenAPI. The tool preserves source meaning while improving document rhythm with Chinese typography, callouts, grids, smart tables, whiteboard hints, and visual suggestions for charts, diagrams, images, and Xiaohongshu-style cards.
 
 ## What It Does
@@ -32,6 +34,35 @@ You can also install directly from GitHub after cloning:
 ```bash
 git clone https://github.com/wellingfeng/lark-beautifier.git
 cp -R lark-beautifier/skills/lark-beautifier ~/.codex/skills/
+```
+
+## Install As A Claude Code Skill
+
+Claude Code skills use the same `SKILL.md` entrypoint. This repository includes a Claude Code project-skill copy at:
+
+```text
+.claude/skills/lark-beautifier
+```
+
+For a project-local Claude Code install, copy it into your project:
+
+```bash
+mkdir -p .claude/skills
+cp -R lark-beautifier/.claude/skills/lark-beautifier .claude/skills/
+```
+
+For a personal Claude Code install:
+
+```bash
+mkdir -p ~/.claude/skills
+cp -R lark-beautifier/.claude/skills/lark-beautifier ~/.claude/skills/
+```
+
+On Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force .claude\skills
+Copy-Item -Recurse lark-beautifier\.claude\skills\lark-beautifier .claude\skills\
 ```
 
 ## Install
@@ -118,6 +149,12 @@ The installable Codex skill lives at:
 skills/lark-beautifier
 ```
 
+The Claude Code skill lives at:
+
+```text
+.claude/skills/lark-beautifier
+```
+
 Install it by copying that folder into your Codex skills directory, for example:
 
 ```bash
@@ -133,5 +170,6 @@ npm test
 npm run check
 npm run build
 npm run lint:md
+npm run check:skills
 node skills/lark-beautifier/scripts/self-check.mjs
 ```

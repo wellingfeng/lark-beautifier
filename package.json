@@ -26,6 +26,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"!node_modules\" \"!tmp\" \"!dist\"",
+    "check:skills": "node tools/check-skill-sync.mjs",
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {
