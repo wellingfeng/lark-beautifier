@@ -65,12 +65,13 @@ state assumptions in the final note.
 
 ## Handoff Procedure
 
-1. Write intermediate visual sources under `tmp/` unless the target tool requires another path.
-2. For whiteboards, read the relevant `lark-whiteboard-cli` scene guide, render a PNG preview, inspect for clipped text or overlaps, then upload/fill the Feishu board.
-3. For images, use `imagegen` or a legitimate public URL; insert local files with `lark-cli docs +media-insert`.
-4. For Xiaohongshu cards, prefer a dedicated XHS skill if installed. If not available, create a card prompt or generated bitmap with short text, large hierarchy, and factual claims only.
-5. For charts, require explicit source data. If data is partial, keep a table and add a "needs data" note rather than fabricating a chart.
-6. After write-back, verify no `<whiteboard type="blank"></whiteboard>` placeholder remains unfilled.
+1. Run the proofreading pass from `copy-editing-and-emphasis.md` before adding visual artifacts.
+2. Write intermediate visual sources under `tmp/` unless the target tool requires another path.
+3. For whiteboards, read the relevant `lark-whiteboard-cli` scene guide, render a PNG preview, inspect for clipped text or overlaps, then upload/fill the Feishu board.
+4. For images, use `imagegen` or a legitimate public URL; insert local files with `lark-cli docs +media-insert`.
+5. For Xiaohongshu cards, prefer a dedicated XHS skill if installed. If not available, create a card prompt or generated bitmap with short text, large hierarchy, and factual claims only.
+6. For charts, require explicit source data. If data is partial, keep a table and add a "needs data" note rather than fabricating a chart.
+7. After write-back, verify no `<whiteboard type="blank"></whiteboard>` placeholder remains unfilled.
 
 ## Suggested Prompt When User Intent Is Ambiguous
 

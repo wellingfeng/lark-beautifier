@@ -23,6 +23,26 @@ Common styles:
 | 风险 / 警告 | ⚠️ | light-red | red |
 | 重点 / 关键 | 📌 | light-yellow | yellow |
 
+### Inline Emphasis
+
+Use inline emphasis for decision-relevant text, not decoration.
+
+```markdown
+**bold**
+*italic*
+<u>underline</u>
+<text color="blue">blue text</text>
+<text background-color="yellow">yellow highlight</text>
+# Colored heading {color="blue"}
+## Center heading {color="blue" align="center"}
+```
+
+Supported text colors: `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `gray`.
+
+Use `<u>` sparingly for actions, constraints, or "must read" caveats. Use headings, callout titles,
+and component cards for larger visual hierarchy; do not invent unsupported inline `font-size` tags.
+For the full decision rules, read `copy-editing-and-emphasis.md`.
+
 ### Grid
 
 Use grids for two or three comparable short sections.

@@ -25,6 +25,8 @@ mood: calm, precise, trustworthy
 - 性能数据（下降/风险）：`<text color="red">**↓ 0.1ms**</text>`
 - 时间点、日期：`<text color="purple">**2026 年 6 月**</text>`
 - 实验性 / Preview 标记：`<text color="orange">**实验性**</text>`
+- 必须执行 / 不可跳过的动作：`<text color="orange"><u>先完成 GPU Profile</u></text>`
+- 大字号层级用 H2/H3、callout 标题、KPI 卡片或封面卡实现；不要使用未验证的 `<font size>` 标签。
 
 > 一段正文里最多 2 处行内高亮，超过会变成杂讯。
 

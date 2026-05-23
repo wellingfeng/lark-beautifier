@@ -8,19 +8,21 @@ description: Visual-first Feishu/Lark document beautification for Markdown and e
 ## Core Workflow
 
 1. **Identify input**: Markdown file/text, Feishu doc URL, or a requested document type.
-2. **Pick a mode** (risk floor):
+2. **Run a proofreading pass first** — see `references/copy-editing-and-emphasis.md`:
+   fix obvious typos, punctuation, broken spacing, duplicated words, and inconsistent technical terms before layout work. Do not rewrite facts, code, URLs, quotes, or uncertain domain wording without marking it as a suggestion.
+3. **Pick a mode** (risk floor):
    - `safe`: high-stakes polish; conservative typography and callouts only.
    - `structured`: normal Feishu readability improvement; tables, grids, suggestions.
    - `bold`: user-approved strong visual draft; real diagrams, timelines, image/card drafts.
-3. **Pick a theme** (visual layer) — see `references/themes-and-components.md`:
+4. **Pick a theme** (visual layer) — see `references/themes-and-components.md`:
    - `technical-blue` (default for engineering docs, release notes)
    - `warm-product` (PRDs, user stories, product launches)
    - `clean-minimal` (executive briefings, compliance, external)
    - `vivid-marketing` (marketing copy, event announcements, social drafts)
-4. **Pick components** by content signals (see decision table in `themes-and-components.md`):
+5. **Pick components** by content signals (see decision table in `themes-and-components.md`):
    cover-banner, kpi-card-row, section-divider, before-after, timeline, quote-block, action-items.
-5. **Read `references/document-profiles.md`** when the document type should affect structure.
-6. **Run the deterministic formatter** before manual rewriting. For ordinary "美化/优化排版/更好看",
+6. **Read `references/document-profiles.md`** when the document type should affect structure.
+7. **Run the deterministic formatter** before manual rewriting. For ordinary "美化/优化排版/更好看",
    default to rich visual output:
 
    ```bash
@@ -34,23 +36,29 @@ description: Visual-first Feishu/Lark document beautification for Markdown and e
      --enhancements draft
    ```
 
-7. **Preserve source facts**. Do not add claims, remove caveats, or rewrite decisions unless the user explicitly requests content editing.
-8. **Prefer real visual artifacts over suggestion-only callouts** when the user explicitly asks for a visual version, diagrams, timelines, images, cards, or a new Lark document. Treat that as permission for that visual class, but never invent facts, metrics, quotes, relationships, or sources.
+8. **Apply importance styling after structure is clear**: use bold, `<text color>`, `<text background-color>`, `<u>`, colored headings, and callouts according to `copy-editing-and-emphasis.md`.
+9. **Preserve source facts**. Do not add claims, remove caveats, or rewrite decisions unless the user explicitly requests content editing.
+10. **Prefer real visual artifacts over suggestion-only callouts** when the user explicitly asks for a visual version, diagrams, timelines, images, cards, or a new Lark document. Treat that as permission for that visual class, but never invent facts, metrics, quotes, relationships, or sources.
 
 ## Visual-First Default
 
 When the user asks for "美化", "视觉优化", "更高级", "强视觉版", or asks to create a new polished Feishu document, do not stop at text cleanup:
 
-1. Produce a Lark-ready document skeleton with cover, KPI/summary cards, section rhythm, and action items when signals exist.
-2. Add at least one real visual artifact when the document has suitable structure:
+1. First correct obvious copy issues: typos, punctuation, duplicated words, broken Chinese/English spacing, and inconsistent terminology.
+2. Produce a Lark-ready document skeleton with cover, KPI/summary cards, section rhythm, and action items when signals exist.
+3. Add at least one real visual artifact when the document has suitable structure:
    - process / workflow / state changes -> flowchart or swimlane whiteboard;
    - architecture / modules / dependencies -> architecture whiteboard;
    - roadmap / release history / evolution -> timeline or milestone whiteboard;
    - comparison / before-after / selection -> comparison component or whiteboard;
    - marketing / social / case story -> Xiaohongshu-style demo card or image prompt.
-3. Use suggestion callouts only when the user has not authorized visual generation, the target doc is high-stakes, or required data is missing.
-4. If the user explicitly says "画流程图", "加图片", "做时间线", "做小红书图", "强视觉版", or asks for a new visual document, execute the relevant handoff without asking again for that category. Ask only for missing brand style, missing data, overwrite risk, or irreversible write-back decisions.
-5. For a newly created Lark doc, a blank `<whiteboard type="blank"></whiteboard>` is incomplete. Immediately fill each returned board token through `lark-whiteboard` / `lark-whiteboard-cli`.
+4. Mark important content at 3 levels:
+   - key term / product / number: bold + theme color;
+   - risk / constraint / action: color + underline or callout;
+   - section thesis: heading color, callout title, or component card.
+5. Use suggestion callouts only when the user has not authorized visual generation, the target doc is high-stakes, or required data is missing.
+6. If the user explicitly says "画流程图", "加图片", "做时间线", "做小红书图", "强视觉版", or asks for a new visual document, execute the relevant handoff without asking again for that category. Ask only for missing brand style, missing data, overwrite risk, or irreversible write-back decisions.
+7. For a newly created Lark doc, a blank `<whiteboard type="blank"></whiteboard>` is incomplete. Immediately fill each returned board token through `lark-whiteboard` / `lark-whiteboard-cli`.
 
 ## Markdown Beautification
 
@@ -77,12 +85,15 @@ node scripts/beautify.mjs input.md --output out.md --mode structured --component
 
 Allowed without extra confirmation:
 
+- obvious typo and punctuation corrections;
+- consistent terminology fixes when the document itself establishes the term;
 - Chinese typography cleanup;
 - high-confidence cue callouts;
 - obvious comparison grids;
 - complex table formatting;
 - visual suggestion callouts;
 - applying theme palette (callout colors per theme rules);
+- applying emphasis styles to existing facts (`**bold**`, `<text color>`, `<text background-color>`, `<u>`, heading color/align);
 - applying component templates when content signals match (see decision table);
 - drafting local Mermaid, whiteboard DSL, image prompts, and Xiaohongshu-card prompts under `tmp/`;
 - creating real diagrams/images/cards for new visual documents when the user requested that visual class.
@@ -102,7 +113,8 @@ When the user asks "make this more visual" / "美化" / "优化下排版", defau
 7. Convert a single high-signal sentence into a **quote-block** only from source text.
 8. Convert end-of-doc checklist into **action-items** grid.
 9. For marketing, tutorial, trend, or concept-explainer docs, generate or draft a **Xiaohongshu-style demo card**: one strong title, 3-5 short takeaways, one visual metaphor, no fabricated claims.
-10. Apply theme's **inline highlight rules** (`<text color="...">**...**</text>`) for key terms — capped at 2 per paragraph for `technical-blue` / `warm-product`, 5 total for `clean-minimal`, looser for `vivid-marketing`.
+10. Apply **copy-editing and emphasis rules** from `references/copy-editing-and-emphasis.md`: correct obvious typos, then highlight only the content that changes reader decisions.
+11. Apply theme's **inline highlight rules** (`<text color="...">**...**</text>`) for key terms — capped at 2 per paragraph for `technical-blue` / `warm-product`, 5 total for `clean-minimal`, looser for `vivid-marketing`.
 
 Always confirm before:
 
@@ -183,3 +195,4 @@ Prefer `@larksuiteoapi/lark-mcp` OAuth authorization-code login. Do not use `lar
 Use `references/visual-enhancement-patterns.md` for visual decision rules and handoff prompts.
 Use `references/lark-flavored-markdown.md` for Feishu XML syntax.
 Use `references/themes-and-components.md` for theme, component, and artifact selection.
+Use `references/copy-editing-and-emphasis.md` before polishing final prose or adding inline emphasis.

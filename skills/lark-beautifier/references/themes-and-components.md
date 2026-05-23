@@ -141,6 +141,20 @@ flowchart / flywheel whiteboard（工作方式或生态闭环）
 | 任何 H2 + 长文档（≥5 章） | section-divider |
 | 「小红书」「种草」「教程」「演示图」「传播」 | Xiaohongshu-style card |
 
+## 重点标注路由
+
+所有主题都先读 `copy-editing-and-emphasis.md`，再按主题上色：
+
+| 内容类型 | technical-blue | warm-product | clean-minimal | vivid-marketing |
+| --- | --- | --- | --- | --- |
+| 产品 / 模块 / 技术术语 | blue bold | purple bold | bold only or blue | purple/orange bold |
+| 正向指标 / 已达成 | green bold | green bold | bold only | green bold |
+| 风险 / 阻断 / 不支持 | red bold or callout | red bold | callout, little color | red/orange bold |
+| 日期 / 版本 / 阶段 | purple bold | orange/purple bold | gray or bold | purple bold |
+| 必须执行的动作 | underline + orange/blue | underline + orange | underline only | underline + orange |
+
+不要用颜色替代结构。重要结论优先用 callout、卡片或标题层级；行内颜色只标记真正影响读者决策的词。
+
 ## 视觉密度
 
 | 密度 | 自动组件行为 |
