@@ -8,7 +8,7 @@ The current v3 direction is visual-first: the formatter still handles typography
 
 ## Before / After Examples
 
-These examples use professional UE5 technical articles with text, tables, code/CVar snippets, Mermaid flowcharts, timelines, and image blocks. The article content was written against Epic's official UE5 documentation for Nanite, Virtual Shadow Maps, and Lumen, then passed through `lark-beautifier` and the aligned screenshot comparison skill.
+These examples use professional UE5 technical articles with text, tables, code/CVar snippets, rendered Mermaid flowcharts, timelines, and image blocks. The article content was written against Epic's official UE5 documentation for Nanite, Virtual Shadow Maps, and Lumen, then passed through `lark-beautifier` and the aligned screenshot comparison skill.
 
 ### Nanite Technical Details
 
@@ -93,7 +93,7 @@ node dist/cli.js input.md \
   --output output.md \
   --mode structured \
   --theme technical-blue \
-  --visual-density rich \
+  --visual-density balanced \
   --components auto \
   --callouts auto \
   --grids auto \
@@ -108,7 +108,7 @@ Risk modes:
 | --- | --- |
 | `safe` | Conservative formatting for high-stakes documents. |
 | `structured` | Default mode for PRDs, meeting notes, technical plans, reports, retros, and project docs. |
-| `bold` | Stronger visual draft mode for user-approved rich documents. |
+| `bold` | Stronger visual rhythm for user-approved rich documents; draft diagrams/prompts require explicit `--enhancements draft`. |
 
 Visual themes:
 
@@ -256,11 +256,12 @@ node tools/generate-readme-demo.mjs
 node skills/lark-beautifier/scripts/beautify.mjs \
   tmp/readme-demo/ue5-nanite-raw.md \
   --output tmp/readme-demo/ue5-nanite-beautified.md \
-  --mode bold \
+  --mode structured \
   --theme technical-blue \
   --components auto \
-  --visual-density rich \
-  --enhancements draft
+  --visual-density balanced \
+  --whiteboards off \
+  --enhancements off
 
 lark-cli docs +create --as bot \
   --title "UE5 Nanite Technical Details (Raw)" \
@@ -276,7 +277,8 @@ node skills/aligned-screenshot-compare/scripts/align-compare.mjs \
   --left-title "Raw Feishu document" \
   --right-title "lark-beautifier output" \
   --out-html tmp/readme-demo/ue5-nanite-compare.html \
-  --out-png doc/assets/readme/ue5-nanite-comparison.png
+  --out-png doc/assets/readme/ue5-nanite-comparison.png \
+  --presentation
 ```
 
 Repeat the same commands for `ue5-vsm` and `ue5-lumen`. Source references:

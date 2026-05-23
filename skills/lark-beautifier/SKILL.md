@@ -23,7 +23,7 @@ description: Visual-first Feishu/Lark document beautification for Markdown and e
    cover-banner, kpi-card-row, section-divider, before-after, timeline, quote-block, action-items.
 6. **Read `references/document-profiles.md`** when the document type should affect structure.
 7. **Run the deterministic formatter** before manual rewriting. For ordinary "美化/优化排版/更好看",
-   default to rich visual output:
+   default to reviewable structured output:
 
    ```bash
    node skills/lark-beautifier/scripts/beautify.mjs input.md \
@@ -31,10 +31,14 @@ description: Visual-first Feishu/Lark document beautification for Markdown and e
      --mode structured \
      --theme auto \
      --components auto \
-     --visual-density rich \
+     --visual-density balanced \
      --whiteboards suggest \
-     --enhancements draft
+     --enhancements suggest
    ```
+
+   Use `--enhancements draft` only for explicit visual-draft review. Draft artifacts must be
+   source-derived or clearly marked as placeholders; do not present generic Mermaid/chart prompts as
+   final beautified content.
 
 8. **Apply importance styling after structure is clear**: use bold, `<text color>`, `<text background-color>`, `<u>`, colored headings, and callouts according to `copy-editing-and-emphasis.md`.
 9. **Preserve source facts**. Do not add claims, remove caveats, or rewrite decisions unless the user explicitly requests content editing.
@@ -59,7 +63,7 @@ When the user asks for "美化", "视觉优化", "更高级", "强视觉版", or
 5. Establish reading rhythm:
    - large H2 sections in long documents: use a clear theme-colored section divider / guide callout so the reader feels a new block;
    - short H3/H4 paragraphs or mechanism notes: prefer `A → B → C`, `阶段 1 → 阶段 2`, thin `---` separators, tables, or compact lists instead of wrapping every paragraph in another callout.
-6. Use suggestion callouts only when the user has not authorized visual generation, the target doc is high-stakes, or required data is missing.
+6. Use suggestion callouts only when the user has not authorized visual generation, the target doc is high-stakes, required data is missing, or the source already contains an equivalent Mermaid/image/table artifact.
 7. If the user explicitly says "画流程图", "加图片", "做时间线", "做小红书图", "强视觉版", or asks for a new visual document, execute the relevant handoff without asking again for that category. Ask only for missing brand style, missing data, overwrite risk, or irreversible write-back decisions.
 8. For a newly created Lark doc, a blank `<whiteboard type="blank"></whiteboard>` is incomplete. Immediately fill each returned board token through `lark-whiteboard` / `lark-whiteboard-cli`.
 
@@ -98,7 +102,7 @@ Allowed without extra confirmation:
 - applying theme palette (callout colors per theme rules);
 - applying emphasis styles to existing facts (`**bold**`, `<text color>`, `<text background-color>`, `<u>`, heading color/align);
 - applying component templates when content signals match (see decision table);
-- drafting local Mermaid, whiteboard DSL, image prompts, and Xiaohongshu-card prompts under `tmp/`;
+- drafting local source-derived Mermaid, whiteboard DSL, image prompts, and Xiaohongshu-card prompts under `tmp/`;
 - creating real diagrams/images/cards for new visual documents when the user requested that visual class.
 
 Never modify fenced code, inline code, links, image URLs, existing HTML, or existing Lark XML blocks.

@@ -8,7 +8,7 @@ Use this reference when a user needs precise CLI behavior.
 |---|---|
 | `safe` | Conservative callouts, no grids, Markdown tables, no whiteboard or visual suggestions |
 | `structured` | Callouts, grids, smart Lark tables, whiteboard suggestions, visual suggestions |
-| `bold` | Aggressive Lark tables and draft Mermaid/prompt artifacts for user-approved optimization |
+| `bold` | Aggressive Lark tables and richer visual rhythm for user-approved optimization; draft artifacts still require explicit `--enhancements draft` |
 
 Explicit lower-level flags override the selected mode.
 
@@ -35,7 +35,7 @@ node skills/lark-beautifier/scripts/beautify.mjs input.md \
 - `--grids off|auto|conservative`: Convert short paired sections such as option A versus option B or pros versus cons.
 - `--tables markdown|smart|lark`: Keep simple tables as Markdown; convert complex tables in `smart`.
 - `--whiteboards off|suggest|insert-blank`: Suggest a whiteboard by default; insert blank whiteboard markup only when requested.
-- `--enhancements off|suggest|draft`: Add visual recommendation callouts; `draft` also includes Mermaid/prompt drafts.
+- `--enhancements off|suggest|draft`: Add visual recommendation callouts; `draft` also includes Mermaid/prompt drafts and should be used only for explicit visual-draft review.
 - `--theme auto|technical-blue|warm-product|clean-minimal|vivid-marketing`: Select the palette and emoji vocabulary. `auto` falls back to `technical-blue` unless the analyzer sees a clear theme signal.
 - `--components off|auto|cover-banner,...`: Inject component blocks from high-confidence content signals. Supported names: `cover-banner`, `section-divider`, `action-items`, `kpi-card-row`, `timeline`, `before-after`, `quote-block`.
 - `--visual-density minimal|balanced|rich`: Control component intensity. `minimal` avoids section dividers and secondary components, `balanced` enables normal auto components, `rich` also allows quote-blocks and section summaries.
@@ -48,4 +48,5 @@ node skills/lark-beautifier/scripts/beautify.mjs input.md \
 - Use `safe` for executive, legal, finance, compliance, or other high-stakes documents.
 - Use `structured` as the default for normal team documents.
 - Use `bold` only when the user asks for a bold rewrite/test or approves the visual plan.
+- Use `--enhancements draft` only when draft diagrams/prompts are acceptable; do not treat generic placeholder artifacts as final content.
 - Do not write `bold` output back to a live Feishu document without explicit confirmation.

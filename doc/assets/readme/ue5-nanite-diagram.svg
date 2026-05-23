@@ -11,7 +11,7 @@
   <rect width="1180" height="520" fill="url(#bg)"/>
   <rect x="34" y="34" width="1112" height="452" rx="28" fill="#ffffff" stroke="#d9e2ef" stroke-width="2"/>
   <text x="70" y="100" font-size="34" font-weight="800" fill="#172033">Nanite Virtualized Geometry</text>
-  <text x="70" y="140" font-size="18" fill="#657187">Nanite 是 UE5 的虚拟化微多边形几何系统。它把高精度网格离线拆分成 Cluster 层级，运行时按视锥、遮挡和屏幕误差只流送并光栅化可见细节，从而让影视级资产可以更直...</text>
+  <text x="70" y="140" font-size="18" fill="#657187">Nanite 是 UE5 的虚拟化几何系统，官方定位是通过内部网格格式和渲染路径实现像素级细节与高对象数量。它把高精度网格离线拆分成 Cluster 层级，运行时只处理屏幕可见...</text>
     <rect x="58" y="230" width="150" height="78" rx="14" fill="#ffffff" stroke="#2563eb" stroke-width="3"/>
   <text x="133" y="276" text-anchor="middle" font-size="20" font-weight="700" fill="#172033">Import</text>
   <path d="M 216 269 L 236 269" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>

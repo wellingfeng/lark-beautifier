@@ -9,14 +9,14 @@ await mkdir(assetDir, { recursive: true });
 const articles = [
   {
     slug: "nanite",
-    title: "UE5 中 Nanite 的技术细节",
+    title: "UE5 Nanite 虚拟化几何技术拆解",
     imageTitle: "Nanite Virtualized Geometry",
     accent: "#2563eb",
     official: [
       "https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine"
     ],
     summary:
-      "Nanite 是 UE5 的虚拟化微多边形几何系统。它把高精度网格离线拆分成 Cluster 层级，运行时按视锥、遮挡和屏幕误差只流送并光栅化可见细节，从而让影视级资产可以更直接地进入实时渲染管线。",
+      "Nanite 是 UE5 的虚拟化几何系统，官方定位是通过内部网格格式和渲染路径实现像素级细节与高对象数量。它把高精度网格离线拆分成 Cluster 层级，运行时只处理屏幕可见且需要的细节，并配合压缩格式、细粒度流送和自动 LOD 降低手工资产维护成本。",
     kpis: [
       ["核心单位", "Cluster / Cluster Group"],
       ["运行目标", "按像素级需求选择细节"],
@@ -29,14 +29,14 @@ const articles = [
       [
         "为什么 Nanite 改变资产管线",
         [
-          "传统实时项目通常需要在 DCC、烘焙、LOD、碰撞和流送之间反复折中。Nanite 的目标是把大部分几何细节管理转移到引擎内部：美术可以导入更高面数的静态网格，运行时系统再决定当前视角需要哪些细节。",
+          "传统实时项目通常需要在 DCC、烘焙、LOD、碰撞和流送之间反复折中。Nanite 的目标不是让面数限制消失，而是把几何细节管理转移到引擎内部：美术可以更直接地导入扫描、雕刻或影视级高模，运行时系统再决定当前视角真正需要哪些细节。",
           "这不等于“无限多边形”。Nanite 仍然受材质复杂度、遮挡效率、实例数量、显存、平台 RHI 和渲染路径约束。正确理解它的关键，是把它看成一套虚拟几何数据库和可见性驱动的 rasterizer，而不是单纯的 LOD 开关。"
         ]
       ],
       [
         "离线构建：从 Triangle 到 Cluster DAG",
         [
-          "导入阶段会把网格划分为很多小 Cluster，并把相邻 Cluster 组织成层级结构。每个层级都携带边界、误差、材质分组和压缩后的几何数据。运行时不需要一次性加载整份高模，而是把可见 Cluster 页流送到 GPU。",
+          "导入阶段会把网格划分为很多小 Cluster，并把相邻 Cluster 组织成层级结构。每个层级携带边界、误差、材质分组和压缩后的几何数据。运行时不需要一次性加载整份高模，而是把可见 Cluster 对应的数据页流送到 GPU。",
           "Cluster 层级的价值在于“局部替换”：远处像素覆盖小的区域可以使用更粗的父级表示，近处再逐步展开子级。由于选择依据接近屏幕误差而不是固定距离，Nanite 在大尺度场景中能比传统 LOD 更稳定。"
         ]
       ],
@@ -45,13 +45,13 @@ const articles = [
         [
           "下面的 Mermaid 流程图概括了 Nanite 在一帧中的高层路径。真实实现还包含软件/硬件光栅分支、HZB 遮挡、page residency 和 material resolve 等细节。"
         ],
-        "```mermaid\nflowchart LR\n  A[Static Mesh Import] --> B[Build Nanite Cluster Hierarchy]\n  B --> C[Compressed Page Store]\n  C --> D[Runtime View + Instance Culling]\n  D --> E[HZB Occlusion + Screen Error Selection]\n  E --> F[Request Resident Pages]\n  F --> G[Nanite Rasterization]\n  G --> H[Depth / Visibility Buffer]\n  H --> I[Material Resolve + GBuffer]\n```"
+        "```mermaid\nflowchart TD\n  A[Static Mesh Import] --> B[Build Nanite Cluster Hierarchy]\n  B --> C[Compressed Page Store]\n  C --> D[Runtime View + Instance Culling]\n  D --> E[HZB Occlusion]\n  D --> F[Screen Error Selection]\n  E --> G[Request Resident Pages]\n  F --> G\n  G --> H[Nanite Rasterization]\n  H --> I[Depth / Visibility Buffer]\n  I --> J[Material Resolve + GBuffer]\n```"
       ],
       [
         "关键数据结构与成本",
         [
           "Nanite 的成本通常不来自“原始三角形总数”本身，而来自屏幕上实际可见的微三角形、材质切换、实例数量、遮挡失败、page miss 以及非 Nanite 物体的混合渲染。",
-          "Fallback Mesh 仍然重要。它用于不支持 Nanite 的渲染路径、碰撞、某些烘焙和射线追踪场景。Fallback 质量太低会影响这些路径的视觉一致性，太高又会增加内存和构建成本。"
+          "Fallback Mesh 仍然重要。官方文档指出，不支持 Nanite 的渲染路径、碰撞、某些烘焙和射线追踪路径会依赖 fallback；Fallback Relative Error 太高会让这些路径失真，太低又会增加内存和构建成本。"
         ]
       ],
       [
@@ -76,14 +76,14 @@ const articles = [
   },
   {
     slug: "vsm",
-    title: "UE5 中 Virtual Shadow Maps 的技术细节",
+    title: "UE5 Virtual Shadow Maps 阴影系统拆解",
     imageTitle: "Virtual Shadow Maps",
     accent: "#7c3aed",
     official: [
       "https://dev.epicgames.com/documentation/en-us/unreal-engine/virtual-shadow-maps-in-unreal-engine"
     ],
     summary:
-      "Virtual Shadow Maps（VSM）是 UE5 面向 Nanite 与大世界场景的高分辨率阴影系统。它把每个光源的阴影空间虚拟化为 16K 级别贴图，并以 128 x 128 page 为单位按需分配、缓存和更新。",
+      "Virtual Shadow Maps（VSM）是 UE5 面向 Nanite、Lumen 与 World Partition 场景的高分辨率阴影路径。官方文档把它描述为虚拟化的超高分辨率 shadow map：逻辑上可达到 16K x 16K，物理上以 128 x 128 page 为单位按需分配、缓存和失效。",
     kpis: [
       ["虚拟分辨率", "16K x 16K 级别"],
       ["Page 粒度", "128 x 128 texels"],
@@ -96,14 +96,14 @@ const articles = [
       [
         "为什么传统 Shadow Map 不够用",
         [
-          "UE5 的 Nanite 场景常包含海量几何细节。如果继续依赖低分辨率 cascaded shadow map，近景阴影会出现锯齿、游泳和接触阴影不足；如果简单提高整张 shadow map 分辨率，显存和渲染成本会迅速失控。",
+          "UE5 的 Nanite 场景常包含海量几何细节。如果继续依赖低分辨率 cascaded shadow map，近景阴影会出现锯齿、游泳和接触阴影不足；如果简单提高整张 shadow map 分辨率，显存、带宽和渲染成本会迅速失控。",
           "VSM 的核心思路与虚拟纹理类似：逻辑上提供极高分辨率的阴影空间，物理上只为屏幕当前需要的区域分配 page。这样可以让近景接触阴影获得更多 texel，同时让远处或不可见区域不占用完整成本。"
         ]
       ],
       [
         "Page 缓存与失效机制",
         [
-          "每个 VSM page 对应阴影空间中的一个固定区域。页面可以在多帧之间缓存；当光源、投影物、接收物或相关材质状态变化时，缓存会失效并重新渲染。静态场景收益很高，动态场景则可能因为大量 page invalidation 产生尖峰。",
+          "每个 VSM page 对应阴影空间中的一个固定区域。页面可以在多帧之间缓存；当光源、投影物、接收物或相关材质状态变化时，缓存会失效并重新渲染。静态场景收益很高，动态场景则可能因为大量 page invalidation 或 cache miss 产生尖峰。",
           "VSM 与 Nanite 的关系很紧密：Nanite 能高效提交可见几何，VSM 则在阴影 pass 中按需请求局部高分辨率。这也是 UE5 大场景中 Lumen、Nanite、VSM 经常一起讨论的原因。"
         ]
       ],
@@ -117,7 +117,7 @@ const articles = [
       [
         "Directional Light、Local Light 与 Clipmap",
         [
-          "Directional Light 通常使用 clipmap 思路覆盖从近景到远景的不同范围；局部光源则更像按光源组织的虚拟 shadow atlas。两者都使用按需 page，但失效模式不同：太阳方向变化会影响大范围页面，局部动态光源则更容易集中在局部成本尖峰。",
+          "Directional Light 通常使用 clipmap 思路覆盖从近景到远景的不同范围；局部光源则更像按光源组织的虚拟 shadow atlas。两者都使用按需 page，但失效模式不同：太阳方向变化会影响大范围页面，局部动态光源则更容易把成本集中在局部热点。",
           "VSM 的质量不是单个开关决定的。接触阴影锐度、软阴影半径、光源数量、动态物体比例、page cache 命中率共同决定最终 GPU 时间。"
         ]
       ],
@@ -143,7 +143,7 @@ const articles = [
   },
   {
     slug: "lumen",
-    title: "UE5 中 Lumen 的技术细节",
+    title: "UE5 Lumen 全局光照与反射技术拆解",
     imageTitle: "Lumen GI & Reflections",
     accent: "#0891b2",
     official: [
@@ -151,7 +151,7 @@ const articles = [
       "https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine"
     ],
     summary:
-      "Lumen 是 UE5 的动态全局光照与反射系统。它结合 Screen Traces、Surface Cache、软件/硬件 Ray Tracing 与 Final Gather，让场景在光源、材质和几何变化后能更快获得多次间接光响应。",
+      "Lumen 是 UE5 的动态全局光照与反射系统。它结合 Screen Traces、Surface Cache、软件/硬件 Ray Tracing 与 Final Gather，让场景在光源、材质和几何变化后获得可交互的间接光与反射响应，并用多级近似在实时预算内逼近离线光照效果。",
     kpis: [
       ["覆盖能力", "动态 GI + Reflections"],
       ["近场优先", "Screen Traces"],
@@ -171,7 +171,7 @@ const articles = [
       [
         "Surface Cache 与 Mesh Cards",
         [
-          "Lumen 会为场景表面建立可快速采样的表示。官方技术文档把 Surface Cache 描述为一种离线捕获附近材质属性的机制，运行时可以在光线命中时查表，而不必对完整材质进行昂贵求值。",
+          "Lumen 会为场景表面建立可快速采样的表示。官方技术文档把 Surface Cache 描述为一种离线捕获附近材质属性的机制，运行时可以在光线命中时查表，而不必对完整材质进行昂贵求值；Card Placement 可用 `r.Lumen.Visualize.CardPlacement 1` 检查。",
           "Mesh Cards 数量和表面覆盖质量会影响 Lumen 对复杂网格的理解。过于细碎、薄片化或封闭复杂的几何可能造成 Surface Cache 覆盖不足，表现为间接光或反射不稳定。"
         ]
       ],
@@ -180,7 +180,7 @@ const articles = [
         [
           "Lumen 会尽量复用屏幕空间信息；当命中离开屏幕或需要屏幕外场景时，再查询 Lumen Scene / Surface Cache 或硬件 RT。"
         ],
-        "```mermaid\nflowchart LR\n  A[Shaded Pixel] --> B[Screen Traces]\n  B --> C{Hit Visible Scene?}\n  C -- Yes --> D[Use Screen Result]\n  C -- No --> E[Trace Lumen Scene]\n  E --> F{Hardware RT Enabled?}\n  F -- Yes --> G[Triangle Ray Tracing]\n  F -- No --> H[Software RT via Mesh Distance Fields]\n  G --> I[Surface Cache Lookup]\n  H --> I\n  D --> J[Final Gather / Reflection Composite]\n  I --> J\n  J --> K[Indirect Lighting + Reflections]\n```"
+        "```mermaid\nflowchart TD\n  A[Shaded Pixel] --> B[Screen Traces]\n  B --> C{Hit Visible Scene?}\n  C -- Yes --> D[Use Screen Result]\n  C -- No --> E[Trace Lumen Scene]\n  E --> F{Hardware RT Enabled?}\n  F -- Yes --> G[Triangle Ray Tracing]\n  F -- No --> H[Software RT via Mesh Distance Fields]\n  G --> I[Surface Cache Lookup]\n  H --> I\n  D --> J[Final Gather / Reflection Composite]\n  I --> J\n  J --> K[Indirect Lighting + Reflections]\n```"
       ],
       [
         "软件 RT 与硬件 RT 的取舍",

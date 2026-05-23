@@ -25,13 +25,7 @@ const rules: EnhancementRule[] = [
       "先让用户确认是否允许把正文步骤重构为图示。",
       "确认后优先生成 Mermaid 或飞书画板；如果要写回飞书，再用 lark-whiteboard-cli 或 lark-whiteboard。"
     ],
-    artifact: (heading, mode) =>
-      mode === "draft"
-        ? {
-            type: "mermaid",
-            value: `flowchart TD\n  A[开始：${heading}] --> B[关键步骤]\n  B --> C{是否满足条件}\n  C -- 是 --> D[进入下一阶段]\n  C -- 否 --> E[补充信息后重试]`
-          }
-        : undefined
+    artifact: () => undefined
   },
   {
     kind: "diagram",
@@ -42,13 +36,7 @@ const rules: EnhancementRule[] = [
       "先确认是否允许根据正文抽取模块和关系。",
       "确认后生成组件图；不要凭空新增系统、服务或依赖。"
     ],
-    artifact: (heading, mode) =>
-      mode === "draft"
-        ? {
-            type: "mermaid",
-            value: `flowchart LR\n  U[用户/读者] --> A[${heading}]\n  A --> B[模块 A]\n  A --> C[模块 B]\n  B --> D[外部依赖]`
-          }
-        : undefined
+    artifact: () => undefined
   },
   {
     kind: "chart",
@@ -59,13 +47,7 @@ const rules: EnhancementRule[] = [
       "先确认是否允许从正文或表格抽取数据。",
       "确认后再生成柱状图、折线图或对比表；缺失数据必须标注为待补充。"
     ],
-    artifact: (heading, mode) =>
-      mode === "draft"
-        ? {
-            type: "mermaid",
-            value: `xychart-beta\n  title "${heading}"\n  x-axis ["A", "B", "C"]\n  y-axis "数值" 0 --> 100\n  bar [30, 55, 80]`
-          }
-        : undefined
+    artifact: () => undefined
   },
   {
     kind: "image",
@@ -93,13 +75,7 @@ const rules: EnhancementRule[] = [
       "先确认是否允许移动段落顺序或新增摘要区。",
       "确认后再拆成概览卡、行动项表或时间线；默认只保留建议，不改正文结构。"
     ],
-    artifact: (heading, mode) =>
-      mode === "draft"
-        ? {
-            type: "mermaid",
-            value: `timeline\n  title ${heading}\n  阶段一 : 待从正文确认\n  阶段二 : 待从正文确认\n  阶段三 : 待从正文确认`
-          }
-        : undefined
+    artifact: () => undefined
   }
 ];
 
@@ -115,17 +91,26 @@ export function transformEnhancements(tree: Root, config: BeautifierConfig): voi
     Array.isArray(config.components) ? config.components.map((name) => name.trim().toLowerCase()) : []
   );
   const componentsAuto = config.components === "auto";
+  const sectionContexts = collectHeadingContexts(tree.children);
 
-  for (const node of tree.children) {
+  for (const [index, node] of tree.children.entries()) {
     output.push(node);
 
     if (node.type !== "heading") {
       continue;
     }
 
+    if ((node as Heading).depth <= 1) {
+      continue;
+    }
+
     const heading = textContent(node as Heading).trim();
+    const context = sectionContexts.get(index);
     const rule = rules.find((candidate) => {
       if (insertedKinds.has(candidate.kind)) {
+        return false;
+      }
+      if (!shouldSuggestForContext(candidate.kind, context)) {
         return false;
       }
       return candidate.patterns.some((pattern) => pattern.test(heading));
@@ -142,6 +127,65 @@ export function transformEnhancements(tree: Root, config: BeautifierConfig): voi
   appendAnalysisEnhancements(output, report, insertedKinds, config, activeComponents, componentsAuto);
 
   tree.children = output;
+}
+
+interface SectionContext {
+  hasMermaid: boolean;
+  hasImage: boolean;
+  hasTable: boolean;
+  hasList: boolean;
+  hasNumericEvidence: boolean;
+}
+
+function collectHeadingContexts(children: RootContent[]): Map<number, SectionContext> {
+  const contexts = new Map<number, SectionContext>();
+  const headingStack: Array<{ index: number; depth: number }> = [];
+
+  for (let index = 0; index < children.length; index += 1) {
+    const node = children[index];
+    if (node.type === "heading") {
+      const depth = (node as Heading).depth;
+      while (headingStack.length && headingStack[headingStack.length - 1].depth >= depth) {
+        headingStack.pop();
+      }
+      headingStack.push({ index, depth });
+      contexts.set(index, { hasMermaid: false, hasImage: false, hasTable: false, hasList: false, hasNumericEvidence: false });
+      continue;
+    }
+
+    const current = headingStack[headingStack.length - 1];
+    if (!current) continue;
+    const context = contexts.get(current.index);
+    if (!context) continue;
+
+    if (node.type === "code" && typeof node.lang === "string" && node.lang.toLowerCase() === "mermaid") {
+      context.hasMermaid = true;
+    } else if (node.type === "image") {
+      context.hasImage = true;
+    } else if (node.type === "table") {
+      context.hasTable = true;
+    } else if (node.type === "list") {
+      context.hasList = true;
+    }
+    if (hasNumericEvidence(textContent(node))) {
+      context.hasNumericEvidence = true;
+    }
+  }
+
+  return contexts;
+}
+
+function shouldSuggestForContext(kind: EnhancementKind, context: SectionContext | undefined): boolean {
+  if (!context) return true;
+  if (kind === "diagram" && context.hasMermaid) return false;
+  if (kind === "chart" && (context.hasMermaid || !context.hasNumericEvidence)) return false;
+  if (kind === "image" && context.hasImage) return false;
+  if (kind === "layout" && (context.hasList || context.hasTable)) return false;
+  return true;
+}
+
+function hasNumericEvidence(text: string): boolean {
+  return /(?:\d+(?:\.\d+)?\s*(?:%|ms|s|秒|分钟|小时|天|GB|MB|KB|fps|FPS|x|倍|元|万|亿|K|M)|Q[1-4]|P\d|v?\d+\.\d+)/i.test(text);
 }
 
 function makeEnhancement(rule: EnhancementRule, heading: string, config: BeautifierConfig): LarkEnhancementNode {

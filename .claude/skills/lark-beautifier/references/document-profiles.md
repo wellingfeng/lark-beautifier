@@ -8,7 +8,7 @@ Use this reference when choosing the structure and visual treatment for a docume
 |---|---|---|
 | `safe` | Executive, legal, finance, high-stakes drafts | Conservative typography and high-confidence callouts only |
 | `structured` | Normal PRDs, meeting notes, plans, technical documents | Callouts, grids, smart tables, whiteboard suggestions, visual suggestions |
-| `bold` | User-approved optimization drafts and test documents | More aggressive tables plus Mermaid/prompt drafts for visual artifacts |
+| `bold` | User-approved optimization drafts and test documents | More aggressive tables and richer visual rhythm; Mermaid/prompt artifacts require explicit `--enhancements draft` |
 
 Do not write `bold` output back to a live user document unless the user explicitly asked for a bold rewrite or approved the proposed visual changes.
 

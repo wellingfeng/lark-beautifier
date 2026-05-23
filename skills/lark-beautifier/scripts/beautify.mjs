@@ -176,7 +176,7 @@ function applyMode(options, explicit) {
     if (!explicit.has("grids")) options.grids = "auto";
     if (!explicit.has("tables")) options.tables = "lark";
     if (!explicit.has("whiteboards")) options.whiteboards = "suggest";
-    if (!explicit.has("enhancements")) options.enhancements = "draft";
+    if (!explicit.has("enhancements")) options.enhancements = "suggest";
     if (!explicit.has("conservative")) options.conservative = false;
   }
 }
@@ -192,6 +192,7 @@ function beautifyStandalone(input, options) {
   const blocks = splitBlocks(body);
   const transformed = [];
   const usedEnhancementKinds = new Set();
+  const sectionContexts = collectSectionContexts(blocks);
 
   for (let index = 0; index < blocks.length; index += 1) {
     const block = blocks[index];
@@ -221,12 +222,13 @@ function beautifyStandalone(input, options) {
 
     transformed.push(formatBlockTypography(block));
 
-    const whiteboard = maybeWhiteboard(block, options);
+    const context = sectionContexts.get(index);
+    const whiteboard = maybeWhiteboard(block, options, context);
     if (whiteboard) {
       transformed.push(whiteboard);
     }
 
-    const enhancement = maybeEnhancement(block, options, usedEnhancementKinds);
+    const enhancement = maybeEnhancement(block, options, usedEnhancementKinds, context);
     if (enhancement) {
       transformed.push(enhancement);
     }
@@ -358,18 +360,51 @@ function maybeTable(block, previousBlock, options) {
   ].join("\n");
 }
 
-function maybeWhiteboard(block, options) {
+function collectSectionContexts(blocks) {
+  const contexts = new Map();
+  const headingStack = [];
+
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    const heading = block.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      const depth = heading[1].length;
+      while (headingStack.length && headingStack[headingStack.length - 1].depth >= depth) {
+        headingStack.pop();
+      }
+      headingStack.push({ index, depth });
+      contexts.set(index, { hasMermaid: false, hasImage: false, hasTable: false, hasList: false, hasNumericEvidence: false });
+      continue;
+    }
+
+    const current = headingStack[headingStack.length - 1];
+    if (!current) continue;
+    const context = contexts.get(current.index);
+    if (!context) continue;
+    if (/^```mermaid\b/i.test(block.trim())) context.hasMermaid = true;
+    if (/^!\[[^\]]*]\([^)]+\)\s*$/.test(block.trim())) context.hasImage = true;
+    if (/^\s*\|[\s\S]*\n\s*\|?\s*:?-{3,}/.test(block)) context.hasTable = true;
+    if (/^\s*(?:[-*+]|\d+[.)])\s+/m.test(block)) context.hasList = true;
+    if (hasNumericEvidence(block)) context.hasNumericEvidence = true;
+  }
+
+  return contexts;
+}
+
+function maybeWhiteboard(block, options, context) {
   if (options.whiteboards === "off" || !/^#{1,6}\s/.test(block)) return undefined;
   const title = block.replace(/^#{1,6}\s*/, "").trim();
   if (!/架构图|流程图|时间线|组织结构|因果分析|系统依赖|依赖关系|泳道图|拓扑/.test(title)) return undefined;
+  if (context?.hasMermaid) return undefined;
   if (options.whiteboards === "insert-blank") {
     return `<whiteboard type="blank" title="${escapeHtml(title)}"></whiteboard>`;
   }
   return `<callout emoji="🧩" background-color="light-yellow" border-color="yellow">\n建议为“${title}”补充飞书画板，后续可用 lark-whiteboard-cli 生成真实图示。\n</callout>`;
 }
 
-function maybeEnhancement(block, options, usedKinds) {
+function maybeEnhancement(block, options, usedKinds, context) {
   if (options.enhancements === "off" || !/^#{1,6}\s/.test(block)) return undefined;
+  if (/^#\s/.test(block)) return undefined;
   const title = block.replace(/^#{1,6}\s*/, "").trim();
   const rule = [
     {
@@ -380,24 +415,21 @@ function maybeEnhancement(block, options, usedKinds) {
       actions: [
         "先让用户确认是否允许把正文步骤重构为图示。",
         "确认后优先生成 Mermaid 或飞书画板；如果要写回飞书，再用 lark-whiteboard-cli 或 lark-whiteboard。"
-      ],
-      artifact: `flowchart TD\n  A[开始：${title}] --> B[关键步骤]\n  B --> C{是否满足条件}\n  C -- 是 --> D[进入下一阶段]\n  C -- 否 --> E[补充信息后重试]`
+      ]
     },
     {
       kind: "diagram",
       test: /架构|依赖|拓扑|模块|系统|服务|组件|集成/i,
       label: "视觉增强建议：架构图",
       rationale: "架构和依赖内容只靠段落很难扫读，适合补一张组件关系图或飞书画板。",
-      actions: ["先确认是否允许根据正文抽取模块和关系。", "确认后生成组件图；不要凭空新增系统、服务或依赖。"],
-      artifact: `flowchart LR\n  U[用户/读者] --> A[${title}]\n  A --> B[模块 A]\n  A --> C[模块 B]\n  B --> D[外部依赖]`
+      actions: ["先确认是否允许根据正文抽取模块和关系。", "确认后生成组件图；不要凭空新增系统、服务或依赖。"]
     },
     {
       kind: "chart",
       test: /指标|数据|增长|下降|占比|转化|成本|收益|趋势|对比|矩阵/i,
       label: "视觉增强建议：图表",
       rationale: "包含指标、趋势或对比时，图表比纯文本更利于判断重点和异常。",
-      actions: ["先确认是否允许从正文或表格抽取数据。", "确认后再生成柱状图、折线图或对比表；缺失数据必须标注为待补充。"],
-      artifact: `xychart-beta\n  title "${title}"\n  x-axis ["A", "B", "C"]\n  y-axis "数值" 0 --> 100\n  bar [30, 55, 80]`
+      actions: ["先确认是否允许从正文或表格抽取数据。", "确认后再生成柱状图、折线图或对比表；缺失数据必须标注为待补充。"]
     },
     {
       kind: "image",
@@ -415,10 +447,9 @@ function maybeEnhancement(block, options, usedKinds) {
       test: /摘要|TL;DR|结论|行动项|负责人|排期|里程碑|路线图|复盘/i,
       label: "视觉增强建议：阅读版式",
       rationale: "摘要、行动项和里程碑适合独立成卡片或时间线，能减少长文读者的定位成本。",
-      actions: ["先确认是否允许移动段落顺序或新增摘要区。", "确认后再拆成概览卡、行动项表或时间线；默认只保留建议，不改正文结构。"],
-      artifact: `timeline\n  title ${title}\n  阶段一 : 待从正文确认\n  阶段二 : 待从正文确认\n  阶段三 : 待从正文确认`
+      actions: ["先确认是否允许移动段落顺序或新增摘要区。", "确认后再拆成概览卡、行动项表或时间线；默认只保留建议，不改正文结构。"]
     }
-  ].find((candidate) => !usedKinds.has(candidate.kind) && candidate.test.test(title));
+  ].find((candidate) => !usedKinds.has(candidate.kind) && shouldSuggestForContext(candidate.kind, context) && candidate.test.test(title));
 
   if (!rule) return undefined;
   usedKinds.add(rule.kind);
@@ -430,12 +461,25 @@ function maybeEnhancement(block, options, usedKinds) {
     "",
     ...rule.actions.map((action) => `- ${action}`)
   ];
-  if (options.enhancements === "draft") {
+  if (options.enhancements === "draft" && rule.artifact) {
     const fence = rule.label.includes("封面/配图") ? "text" : "mermaid";
     lines.push("", `\`\`\`${fence}`, rule.artifact, "```");
   }
   lines.push("</callout>");
   return lines.join("\n");
+}
+
+function shouldSuggestForContext(kind, context) {
+  if (!context) return true;
+  if (kind === "diagram" && context.hasMermaid) return false;
+  if (kind === "chart" && (context.hasMermaid || !context.hasNumericEvidence)) return false;
+  if (kind === "image" && context.hasImage) return false;
+  if (kind === "layout" && (context.hasList || context.hasTable)) return false;
+  return true;
+}
+
+function hasNumericEvidence(text) {
+  return /(?:\d+(?:\.\d+)?\s*(?:%|ms|s|秒|分钟|小时|天|GB|MB|KB|fps|FPS|x|倍|元|万|亿|K|M)|Q[1-4]|P\d|v?\d+\.\d+)/i.test(text);
 }
 
 function parseGridHeading(block) {

@@ -27,7 +27,8 @@ const htmlOptions = {
   thresholdPx: Number(args["align-threshold-px"] ?? 700),
   targetResidualPx: Number(args["target-residual-px"] ?? 32),
   minAnchorChars: Number(args["min-anchor-chars"] ?? 120),
-  showSpacers: Boolean(args["show-spacers"])
+  showSpacers: Boolean(args["show-spacers"]),
+  presentation: Boolean(args.presentation)
 };
 const html = mode === "rows" ? renderRowsHtml(htmlOptions) : renderSoftHtml(htmlOptions);
 
@@ -77,6 +78,7 @@ function parseBlocks(markdown, side) {
 
     const line = lines[i];
     if (/^```/.test(line.trim())) {
+      const lang = line.trim().match(/^```([^\s`]*)/)?.[1]?.toLowerCase() ?? "";
       const buf = [line];
       i += 1;
       while (i < lines.length) {
@@ -87,7 +89,7 @@ function parseBlocks(markdown, side) {
         }
         i += 1;
       }
-      blocks.push(makeBlock("code", buf.join("\n"), side));
+      blocks.push(makeBlock(lang === "mermaid" ? "mermaid" : "code", buf.join("\n"), side));
       continue;
     }
 
@@ -320,8 +322,21 @@ function summarize(rows) {
 }
 
 function renderSoftHtml(options) {
-  const { leftTitle, rightTitle, leftSource, rightSource, rows, stats, thresholdPx, targetResidualPx, minAnchorChars, showSpacers } = options;
+  const {
+    leftTitle,
+    rightTitle,
+    leftSource,
+    rightSource,
+    rows,
+    stats,
+    thresholdPx,
+    targetResidualPx,
+    minAnchorChars,
+    showSpacers,
+    presentation
+  } = options;
   const { leftItems, rightItems, anchorCount } = buildSoftStreams(rows, minAnchorChars);
+  const bodyClass = presentation ? "presentation" : "";
 
   return `<!doctype html>
 <html lang="zh-CN" data-align-threshold-px="${thresholdPx}" data-target-residual-px="${targetResidualPx}" data-show-spacers="${showSpacers ? "true" : "false"}">
@@ -357,9 +372,13 @@ function renderSoftHtml(options) {
   .grid { display: grid; gap: 10px; margin: 0 0 16px; }
   .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-card { padding: 12px; border: 1px solid #dbe3ee; border-radius: 8px; background: #f8fafc; font-size: 12px; line-height: 1.55; }
   .grid-card strong { color: #0f172a; }
+  .mermaid-block { padding: 12px; border: 1px solid #dbe3ee; background: #f8fafc; border-radius: 8px; }
+  .mermaid-block .mermaid { margin: 0; padding: 0; border: 0; background: transparent; white-space: pre-wrap; }
+  .mermaid-block svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+  .mermaid-failed { padding: 12px !important; border: 1px solid #e2e8f0 !important; background: #fff !important; }
   .visual { margin: 0 0 16px; min-height: 72px; padding: 14px; border: 1px dashed #b6c2d2; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 12px; display: flex; align-items: center; justify-content: center; text-align: center; }
   .image { margin: 0 0 16px; }
   .image img { display: block; width: 100%; max-height: 280px; object-fit: contain; border: 1px solid #dbe3ee; border-radius: 8px; background: #f8fafc; }
@@ -368,9 +387,14 @@ function renderSoftHtml(options) {
   .align-spacer { margin: 0; padding: 0; background: transparent; }
   html[data-show-spacers="true"] .align-spacer { background: repeating-linear-gradient(-45deg, rgb(37 99 235 / 8%), rgb(37 99 235 / 8%) 8px, transparent 8px, transparent 16px); border: 1px dashed rgb(37 99 235 / 25%); }
   html[data-show-spacers="true"] .align-spacer::after { content: attr(data-label); display: block; padding: 4px 8px; color: #2563eb; font-size: 11px; }
+  body.presentation { background: #e8eef6; }
+  body.presentation .top { display: none; }
+  body.presentation .compare { padding: 28px 30px 44px; gap: 28px; }
+  body.presentation .panel { border-radius: 2px; overflow: hidden; box-shadow: 0 12px 34px rgb(15 23 42 / 10%); }
+  body.presentation .panel-title { position: static; padding: 15px 24px; }
 </style>
 </head>
-<body>
+<body class="${bodyClass}">
   <header class="top">
     <h1>Soft-Aligned Screenshot Compare</h1>
     <p>${escapeHtml(leftSource)} ↔ ${escapeHtml(rightSource)} | rows ${stats.rows}, matched ${stats.matched}, right-only ${stats.rightOnly}, anchors ${anchorCount}. Only large drift triggers blank spacers.</p>
@@ -379,6 +403,37 @@ function renderSoftHtml(options) {
     <section class="panel"><div class="panel-title">${escapeHtml(leftTitle)}</div><article class="doc left-doc">${leftItems.map(renderDocItem).join("\n")}</article></section>
     <section class="panel"><div class="panel-title">${escapeHtml(rightTitle)}</div><article class="doc right-doc">${rightItems.map(renderDocItem).join("\n")}</article></section>
   </main>
+  <script type="module">
+    window.__mermaidDone = document.querySelector(".mermaid") ? false : true;
+    async function renderMermaidDiagrams() {
+      if (window.__mermaidDone) return;
+      try {
+        const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: "base",
+          themeVariables: {
+            primaryColor: "#eff6ff",
+            primaryTextColor: "#0f172a",
+            primaryBorderColor: "#2563eb",
+            lineColor: "#2563eb",
+            secondaryColor: "#f8fafc",
+            tertiaryColor: "#ffffff",
+            fontFamily: "Microsoft YaHei, PingFang SC, Arial, sans-serif"
+          }
+        });
+        await mermaid.run({ querySelector: ".mermaid" });
+      } catch (error) {
+        document.querySelectorAll(".mermaid").forEach((node) => node.classList.add("mermaid-failed"));
+        console.warn("Mermaid render failed", error);
+      } finally {
+        window.__mermaidDone = true;
+        document.dispatchEvent(new Event("mermaid-ready"));
+      }
+    }
+    renderMermaidDiagrams();
+  </script>
   <script>
     window.__alignmentDone = false;
     window.__alignmentStats = null;
@@ -412,8 +467,15 @@ function renderSoftHtml(options) {
       window.__alignmentStats = { thresholdPx: threshold, targetResidualPx: residual, spacerCount, totalSpacerPx, maxDriftPx: Math.round(maxDriftPx) };
       window.__alignmentDone = true;
     }
+    function waitForMermaid() {
+      if (window.__mermaidDone) return Promise.resolve();
+      return new Promise((resolve) => {
+        document.addEventListener("mermaid-ready", resolve, { once: true });
+        setTimeout(resolve, 7000);
+      });
+    }
     const ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
-    ready.then(() => requestAnimationFrame(() => setTimeout(applySoftAlignment, 50)));
+    Promise.all([ready, waitForMermaid()]).then(() => requestAnimationFrame(() => setTimeout(applySoftAlignment, 80)));
   </script>
 </body>
 </html>`;
@@ -437,7 +499,7 @@ function shouldAnchor(row, minAnchorChars) {
   if (!row.left || !row.right) return false;
   if (row.score < 0.75) return false;
   if (row.left.type === "heading" || row.right.type === "heading") return true;
-  if (row.left.type === "code" || row.left.type === "table") return true;
+  if (row.left.type === "code" || row.left.type === "mermaid" || row.left.type === "table") return true;
   return Math.min(row.left.normalized.length, row.right.normalized.length) >= minAnchorChars;
 }
 
@@ -452,7 +514,10 @@ function renderDocBlock(block, pairAttr = "") {
     return `<div class="doc-block heading"${pairAttr}><h${level}>${escapeHtml(block.raw.replace(/^#+\s*/, ""))}</h${level}></div>`;
   }
   if (block.type === "code") {
-    return `<div class="doc-block code"${pairAttr}><pre>${escapeHtml(block.raw)}</pre></div>`;
+    return `<div class="doc-block code"${pairAttr}><pre>${escapeHtml(stripFence(block.raw))}</pre></div>`;
+  }
+  if (block.type === "mermaid") {
+    return `<div class="doc-block mermaid-block"${pairAttr}><pre class="mermaid">${escapeHtml(stripFence(block.raw))}</pre></div>`;
   }
   if (block.type === "callout") {
     return `<div class="doc-block callout"${pairAttr}>${paragraphs(block.text)}</div>`;
@@ -504,7 +569,7 @@ function renderList(raw) {
   const items = raw.split("\n").map((line) => line.trim()).filter(Boolean);
   const ordered = items.every((line) => /^\d+[.)]\s+/.test(line));
   const tag = ordered ? "ol" : "ul";
-  const body = items.map((line) => `<li>${escapeHtml(line.replace(/^[-*+]\s+/, "").replace(/^\d+[.)]\s+/, ""))}</li>`).join("");
+  const body = items.map((line) => `<li>${inlineMarkdown(line.replace(/^[-*+]\s+/, "").replace(/^\d+[.)]\s+/, ""))}</li>`).join("");
   return `<${tag}>${body}</${tag}>`;
 }
 
@@ -583,12 +648,27 @@ function renderRowsHtml({ leftTitle, rightTitle, leftSource, rightSource, rows, 
 function renderDebugBlock(block) {
   if (!block) return `<div class="empty">No matching block on this side</div>`;
   const label = `<span class="block-type">${escapeHtml(block.type)}</span>`;
-  if (block.type === "code" || block.type === "table" || block.type === "visual") return `${label}<pre>${escapeHtml(block.raw)}</pre>`;
+  if (block.type === "code" || block.type === "mermaid" || block.type === "table" || block.type === "visual") return `${label}<pre>${escapeHtml(block.raw)}</pre>`;
   return `${label}${paragraphs(block.raw)}`;
 }
 
 function paragraphs(text) {
-  return text.split(/\n{2,}/).map((para) => `<p>${escapeHtml(para.trim()).replace(/\n/g, "<br>")}</p>`).join("");
+  return text.split(/\n{2,}/).map((para) => `<p>${inlineMarkdown(para.trim()).replace(/\n/g, "<br>")}</p>`).join("");
+}
+
+function stripFence(raw) {
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+  if (/^```/.test(lines[0]?.trim() ?? "")) lines.shift();
+  if (/^```/.test(lines[lines.length - 1]?.trim() ?? "")) lines.pop();
+  return lines.join("\n").trim();
+}
+
+function inlineMarkdown(value) {
+  return escapeHtml(value)
+    .replace(/!\[([^\]]*)]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g, "$1")
+    .replace(/\[([^\]]+)]\(([^)]+)\)/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
 function escapeHtml(value) {

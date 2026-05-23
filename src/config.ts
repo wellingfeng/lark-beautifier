@@ -64,7 +64,7 @@ const modeDefaults: Record<BeautifierMode, Partial<BeautifierConfig>> = {
     grids: "auto",
     tables: "lark",
     whiteboards: "suggest",
-    enhancements: "draft",
+    enhancements: "suggest",
     conservative: false,
     components: "off",
     visualDensity: "rich"

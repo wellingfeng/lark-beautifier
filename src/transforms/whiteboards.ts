@@ -1,4 +1,4 @@
-import type { Root, RootContent } from "mdast";
+import type { Heading, Root, RootContent } from "mdast";
 import type { BeautifierConfig } from "../config.js";
 import { mentionsWhiteboardCandidate, textContent } from "../analyzer.js";
 import type { LarkCalloutNode, LarkWhiteboardNode } from "../types.js";
@@ -10,8 +10,9 @@ export function transformWhiteboards(tree: Root, config: BeautifierConfig): void
 
   const output: RootContent[] = [];
   const insertedForHeadings = new Set<string>();
+  const headingsWithMermaid = collectHeadingsWithMermaid(tree.children);
 
-  for (const node of tree.children) {
+  for (const [index, node] of tree.children.entries()) {
     output.push(node);
 
     if (node.type !== "heading") {
@@ -19,7 +20,7 @@ export function transformWhiteboards(tree: Root, config: BeautifierConfig): void
     }
 
     const text = textContent(node).trim();
-    if (!mentionsWhiteboardCandidate(text) || insertedForHeadings.has(text)) {
+    if (!mentionsWhiteboardCandidate(text) || insertedForHeadings.has(text) || headingsWithMermaid.has(index)) {
       continue;
     }
 
@@ -28,6 +29,30 @@ export function transformWhiteboards(tree: Root, config: BeautifierConfig): void
   }
 
   tree.children = output;
+}
+
+function collectHeadingsWithMermaid(children: RootContent[]): Set<number> {
+  const headings = new Set<number>();
+  const headingStack: Array<{ index: number; depth: number }> = [];
+
+  for (let index = 0; index < children.length; index += 1) {
+    const node = children[index];
+    if (node.type === "heading") {
+      const depth = (node as Heading).depth;
+      while (headingStack.length && headingStack[headingStack.length - 1].depth >= depth) {
+        headingStack.pop();
+      }
+      headingStack.push({ index, depth });
+      continue;
+    }
+
+    if (node.type === "code" && typeof node.lang === "string" && node.lang.toLowerCase() === "mermaid") {
+      const current = headingStack[headingStack.length - 1];
+      if (current) headings.add(current.index);
+    }
+  }
+
+  return headings;
 }
 
 function makeWhiteboardNode(config: BeautifierConfig, title: string): LarkWhiteboardNode | LarkCalloutNode {

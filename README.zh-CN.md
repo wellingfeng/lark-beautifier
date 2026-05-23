@@ -8,7 +8,7 @@ Lark Beautifier 是一个 Node.js / TypeScript CLI，也是一套可安装的 Ag
 
 ## 前后对比示例
 
-下面三组示例是更接近真实技术文章的 UE5 主题文档，内容包含正文、表格、代码 / CVar、Mermaid 流程图、时间线和图片块。文章事实边界参考 Epic 官方 UE5 文档：Nanite、Virtual Shadow Maps 和 Lumen。
+下面三组示例是更接近真实技术文章的 UE5 主题文档，内容包含正文、表格、代码 / CVar、已渲染 Mermaid 流程图、时间线和图片块。文章事实边界参考 Epic 官方 UE5 文档：Nanite、Virtual Shadow Maps 和 Lumen。
 
 ### Nanite 技术细节
 
@@ -94,7 +94,7 @@ node dist/cli.js input.md \
   --output output.md \
   --mode structured \
   --theme technical-blue \
-  --visual-density rich \
+  --visual-density balanced \
   --components auto \
   --callouts auto \
   --grids auto \
@@ -109,7 +109,7 @@ node dist/cli.js input.md \
 | --- | --- |
 | `safe` | 高风险、高管、法务、财务类文档，只做保守排版和高置信结构化。 |
 | `structured` | 默认模式，适合 PRD、会议纪要、技术方案、周报、复盘和项目文档。 |
-| `bold` | 用户明确要求强视觉或测试文档时使用，会生成更丰富的视觉草案。 |
+| `bold` | 用户明确要求强视觉或测试文档时使用；草案级图表 / prompt 需要显式加 `--enhancements draft`。 |
 
 视觉主题：
 
@@ -257,11 +257,12 @@ node tools/generate-readme-demo.mjs
 node skills/lark-beautifier/scripts/beautify.mjs \
   tmp/readme-demo/ue5-nanite-raw.md \
   --output tmp/readme-demo/ue5-nanite-beautified.md \
-  --mode bold \
+  --mode structured \
   --theme technical-blue \
   --components auto \
-  --visual-density rich \
-  --enhancements draft
+  --visual-density balanced \
+  --whiteboards off \
+  --enhancements off
 
 lark-cli docs +create --as bot \
   --title "UE5 Nanite 技术细节（原始版）" \
@@ -277,7 +278,8 @@ node skills/aligned-screenshot-compare/scripts/align-compare.mjs \
   --left-title "原始飞书文档" \
   --right-title "lark-beautifier 美化版" \
   --out-html tmp/readme-demo/ue5-nanite-compare.html \
-  --out-png doc/assets/readme/ue5-nanite-comparison.png
+  --out-png doc/assets/readme/ue5-nanite-comparison.png \
+  --presentation
 ```
 
 把 `ue5-nanite` 替换为 `ue5-vsm`、`ue5-lumen` 即可复现另外两张。官方参考：

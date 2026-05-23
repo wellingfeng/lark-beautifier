@@ -33,10 +33,11 @@ describe("mode presets", () => {
     expect(output).not.toContain("```mermaid");
   });
 
-  it("bold mode adds draft visual artifacts", () => {
+  it("bold mode keeps visual artifacts suggestion-only unless explicitly requested", () => {
     const output = beautifyMarkdown(input, { mode: "bold" });
 
     expect(output).toContain("<lark-table");
-    expect(output).toContain("```mermaid");
+    expect(output).toContain("视觉增强建议");
+    expect(output).not.toContain("```mermaid");
   });
 });
