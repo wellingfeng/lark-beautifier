@@ -111,7 +111,7 @@ Use `--check` to fail when a file would change, `--diff` to print a unified diff
 
 ## Feishu Write-Back
 
-The skill includes a dry-run-first write-back helper:
+The skill includes a dry-run-first write-back helper. It can beautify a local Markdown file:
 
 ```bash
 node skills/lark-beautifier/scripts/lark-doc-writeback.mjs \
@@ -132,6 +132,17 @@ LARK_MCP_APP_ID=<app_id> node skills/lark-beautifier/scripts/lark-doc-writeback.
 ```
 
 The helper never needs app secrets on the command line when a local `lark-mcp` OAuth token already exists.
+
+It can also read an existing Feishu doc and generate a diff-style plan before writing:
+
+```bash
+LARK_MCP_APP_ID=<app_id> node skills/lark-beautifier/scripts/lark-doc-writeback.mjs \
+  --doc "https://example.feishu.cn/docx/..." \
+  --mode structured \
+  --plan-output plan.json
+```
+
+For `--mode bold`, live write-back requires `--confirm-bold` after the user approves the plan.
 
 For first-time OAuth login, use:
 
@@ -172,4 +183,5 @@ npm run build
 npm run lint:md
 npm run check:skills
 node skills/lark-beautifier/scripts/self-check.mjs
+npm run package:skill
 ```

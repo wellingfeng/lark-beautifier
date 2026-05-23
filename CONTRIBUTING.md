@@ -8,6 +8,7 @@ npm test
 npm run check
 npm run lint:md
 npm run check:skills
+npm run package:skill
 ```
 
 Run the standalone skill self-check:

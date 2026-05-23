@@ -27,6 +27,8 @@
     "test": "vitest run",
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"!node_modules\" \"!tmp\" \"!dist\"",
     "check:skills": "node tools/check-skill-sync.mjs",
+    "sync:skills": "node tools/sync-skills.mjs",
+    "package:skill": "npm run sync:skills && npm run check:skills && node tools/package-skill.mjs",
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {

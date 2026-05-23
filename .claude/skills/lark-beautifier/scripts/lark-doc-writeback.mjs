@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -13,22 +13,37 @@ const beautifyScript = resolve(scriptDir, "beautify.mjs");
 const options = parseArgs(process.argv.slice(2));
 
 if (!options.doc) {
-  fail("Usage: node scripts/lark-doc-writeback.mjs --doc <url-or-token> --input <file.md> [--mode safe|structured|bold] [--apply]");
+  fail("Usage: node scripts/lark-doc-writeback.mjs --doc <url-or-token> [--input <file.md>] [--mode safe|structured|bold] [--apply]");
 }
 
-if (!options.input) {
-  fail("--input is required.");
+if (options.mode === "bold" && options.apply && !options.confirmBold) {
+  fail("Bold mode write-back requires --confirm-bold after the user approves the bold plan.");
 }
 
 const docToken = extractDocToken(options.doc);
-const source = await readFile(resolve(options.input), "utf8");
+const token = options.input ? undefined : await resolveToken(options);
+if (!options.input && !token) {
+  fail("Reading a Feishu doc requires OAuth. Run lark-mcp login first, set LARK_MCP_APP_ID, or pass --token-env NAME.");
+}
+
+const sourceInfo = options.input
+  ? { kind: "file", path: resolve(options.input), content: await readFile(resolve(options.input), "utf8") }
+  : await readDocSource(token, docToken);
+const source = sourceInfo.content;
 const preparedMarkdown = await prepareMarkdown(source, options);
 const blocks = markdownToFeishuBlocks(preparedMarkdown);
+const beforeSummary = summarizeMarkdown(source);
+const afterSummary = summarizeBlocks(blocks);
 const plan = {
   docToken,
   mode: options.mode,
   dryRun: !options.apply,
-  source: resolve(options.input),
+  source: { kind: sourceInfo.kind, path: sourceInfo.path },
+  writeStrategy: options.replace ? "replace" : "append",
+  before: beforeSummary,
+  after: afterSummary,
+  likelyChanges: diffSummaries(beforeSummary, afterSummary),
+  confirmationRequired: buildConfirmationChecklist(options, afterSummary),
   blockCount: blocks.length,
   headings: blocks.filter((block) => block.kind?.startsWith("heading")).map((block) => block._text),
   nativeTables: blocks.filter((block) => block.kind === "larkTable").length,
@@ -42,18 +57,18 @@ if (!options.apply) {
   process.exit(0);
 }
 
-const token = await resolveToken(options);
-if (!token) {
+const applyToken = token || await resolveToken(options);
+if (!applyToken) {
   fail("No OAuth token available. Run lark-mcp login first or pass --token-env NAME with an environment variable.");
 }
 
-const existing = await fetchChildren(token, docToken, docToken);
+const existing = await fetchChildren(applyToken, docToken, docToken);
 if (options.replace) {
-  await deleteAllChildren(token, docToken, docToken, existing.length);
+  await deleteAllChildren(applyToken, docToken, docToken, existing.length);
 }
 
-const created = await createMarkdownBlocks(token, docToken, docToken, blocks, options.replace ? 0 : existing.length);
-const after = await fetchChildren(token, docToken, docToken);
+const created = await createMarkdownBlocks(applyToken, docToken, docToken, blocks, options.replace ? 0 : existing.length);
+const after = await fetchChildren(applyToken, docToken, docToken);
 
 console.log(JSON.stringify({
   ...plan,
@@ -73,7 +88,8 @@ function parseArgs(args) {
     tokenEnv: "LARK_USER_ACCESS_TOKEN",
     appId: process.env.LARK_MCP_APP_ID,
     planOutput: undefined,
-    beautify: true
+    beautify: true,
+    confirmBold: false
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -100,6 +116,8 @@ function parseArgs(args) {
       parsed.planOutput = args[++index];
     } else if (arg === "--no-beautify") {
       parsed.beautify = false;
+    } else if (arg === "--confirm-bold") {
+      parsed.confirmBold = true;
     } else {
       fail(`Unknown argument: ${arg}`);
     }
@@ -115,7 +133,8 @@ function parseMode(value) {
 
 async function prepareMarkdown(source, runOptions) {
   if (!runOptions.beautify) return source;
-  const result = spawnSync(process.execPath, [beautifyScript, "--mode", runOptions.mode, runOptions.input], {
+  const tempInput = runOptions.input || await writeTempMarkdown(source);
+  const result = spawnSync(process.execPath, [beautifyScript, "--mode", runOptions.mode, tempInput], {
     cwd: skillDir,
     encoding: "utf8"
   });
@@ -123,6 +142,15 @@ async function prepareMarkdown(source, runOptions) {
     fail(result.stderr || `beautify.mjs exited with ${result.status}`);
   }
   return result.stdout;
+}
+
+async function readDocSource(oauthToken, docToken) {
+  const raw = await api(oauthToken, "GET", `/open-apis/docx/v1/documents/${docToken}/raw_content`);
+  return {
+    kind: "doc",
+    path: `docx:${docToken}`,
+    content: raw.data.content || ""
+  };
 }
 
 function extractDocToken(value) {
@@ -197,7 +225,7 @@ function markdownToFeishuBlocks(markdown) {
       continue;
     }
 
-    const startTag = line.trim().match(/^<(callout|lark-table|whiteboard)\b/i);
+    const startTag = line.trim().match(/^<(callout|grid|lark-table|whiteboard)\b/i);
     if (startTag) {
       flushParagraph();
       htmlTag = startTag[1].toLowerCase();
@@ -257,6 +285,86 @@ function markdownToFeishuBlocks(markdown) {
   return blocks;
 }
 
+function summarizeMarkdown(markdown) {
+  const headings = [];
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  let bulletCount = 0;
+  let tableCount = 0;
+  let calloutCount = 0;
+  let codeBlockCount = 0;
+  let inFence = false;
+
+  for (const line of lines) {
+    if (/^```/.test(line.trim())) {
+      inFence = !inFence;
+      if (inFence) codeBlockCount += 1;
+      continue;
+    }
+    if (inFence) continue;
+    const heading = line.match(/^(#{1,6})\s+(.+?)\s*$/);
+    if (heading) headings.push(stripMarkdownInline(heading[2]));
+    if (/^\s*[-*]\s+/.test(line)) bulletCount += 1;
+    if (/^\s*\|.*\|\s*$/.test(line)) tableCount += 1;
+    if (/^<callout\b/i.test(line.trim())) calloutCount += 1;
+  }
+
+  return {
+    length: markdown.length,
+    headingCount: headings.length,
+    headings,
+    bulletCount,
+    markdownTableLikeLines: tableCount,
+    calloutCount,
+    codeBlockCount
+  };
+}
+
+function summarizeBlocks(parsedBlocks) {
+  return {
+    blockCount: parsedBlocks.length,
+    headingCount: parsedBlocks.filter((block) => block.kind?.startsWith("heading")).length,
+    headings: parsedBlocks.filter((block) => block.kind?.startsWith("heading")).map((block) => block._text),
+    bulletCount: parsedBlocks.filter((block) => block.kind === "bullet").length,
+    nativeTables: parsedBlocks.filter((block) => block.kind === "larkTable").length,
+    callouts: parsedBlocks.filter((block) => block.kind === "callout").length,
+    codeBlocks: parsedBlocks.filter((block) => block.kind === "code").length,
+    grids: parsedBlocks.filter((block) => block.kind === "grid").length,
+    unsupportedPlaceholders: parsedBlocks.filter((block) => block.kind === "whiteboard").length
+  };
+}
+
+function diffSummaries(before, after) {
+  const changes = [];
+  if (after.headingCount !== before.headingCount) changes.push(`heading count ${before.headingCount} -> ${after.headingCount}`);
+  if (after.nativeTables > 0) changes.push(`${after.nativeTables} native table candidate(s)`);
+  if (after.callouts !== before.calloutCount) changes.push(`callout count ${before.calloutCount} -> ${after.callouts}`);
+  if (after.unsupportedPlaceholders > 0) changes.push(`${after.unsupportedPlaceholders} unsupported visual placeholder(s) kept as text`);
+  if (!changes.length) changes.push("no major structural count changes");
+  return changes;
+}
+
+function buildConfirmationChecklist(runOptions, after) {
+  const checklist = [];
+  if (runOptions.apply) checklist.push("User confirmed writing to the live Feishu document.");
+  else checklist.push("Dry-run only; no live document changes.");
+  if (runOptions.mode === "bold") {
+    checklist.push(runOptions.confirmBold
+      ? "User confirmed bold visual/layout changes."
+      : "Bold visual/layout changes require confirmation before apply.");
+  }
+  if (after.nativeTables > 0) checklist.push("Review native table candidates before apply.");
+  if (after.unsupportedPlaceholders > 0) checklist.push("Resolve whiteboard/image placeholders with dedicated tools if needed.");
+  return checklist;
+}
+
+async function writeTempMarkdown(content) {
+  const dir = resolve(process.cwd(), "tmp");
+  await mkdir(dir, { recursive: true });
+  const file = resolve(dir, `lark-beautifier-source-${Date.now()}.md`);
+  await writeFile(file, content, "utf8");
+  return file;
+}
+
 function parseKnownHtmlBlock(raw) {
   if (/^<callout\b/i.test(raw)) {
     const body = raw.replace(/^<callout[^>]*>/i, "").replace(/<\/callout>$/i, "").trim();
@@ -273,6 +381,23 @@ function parseKnownHtmlBlock(raw) {
   }
   if (/^<whiteboard\b/i.test(raw)) {
     return textBlock(stripMarkdownInline(raw), "whiteboard");
+  }
+  if (/^<grid\b/i.test(raw)) {
+    const columns = [...raw.matchAll(/<column>([\s\S]*?)<\/column>/gi)]
+      .map((match) => stripMarkdownInline(match[1]).replace(/\n{2,}/g, "\n").trim())
+      .filter(Boolean);
+    return {
+      kind: "grid",
+      block_type: 19,
+      callout: {
+        background_color: 5,
+        border_color: 5,
+        emoji_id: "memo"
+      },
+      children: columns.length
+        ? columns.map((column, index) => textBlock(`分栏 ${index + 1}\n${column}`))
+        : [textBlock(stripMarkdownInline(raw))]
+    };
   }
   if (/^<lark-table\b/i.test(raw)) {
     const headers = [...raw.matchAll(/<th>([\s\S]*?)<\/th>/gi)].map((match) => decodeHtml(match[1]));

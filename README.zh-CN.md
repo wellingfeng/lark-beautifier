@@ -109,7 +109,7 @@ node dist/cli.js input.md \
 
 ## 飞书写回
 
-Skill 内置写回脚本，默认 dry-run，只生成计划，不修改文档：
+Skill 内置写回脚本，默认 dry-run，只生成计划，不修改文档。可以从本地 Markdown 生成写回计划：
 
 ```bash
 node skills/lark-beautifier/scripts/lark-doc-writeback.mjs \
@@ -128,6 +128,17 @@ LARK_MCP_APP_ID=<app_id> node skills/lark-beautifier/scripts/lark-doc-writeback.
   --mode structured \
   --apply
 ```
+
+也可以直接读取现有飞书文档，生成差异计划后再决定是否写回：
+
+```bash
+LARK_MCP_APP_ID=<app_id> node skills/lark-beautifier/scripts/lark-doc-writeback.mjs \
+  --doc "https://example.feishu.cn/docx/..." \
+  --mode structured \
+  --plan-output plan.json
+```
+
+如果使用 `--mode bold`，真实写回前必须在用户确认方案后额外传入 `--confirm-bold`。
 
 首次登录建议使用 `@larksuiteoapi/lark-mcp` 的 OAuth 授权码流程：
 
@@ -156,6 +167,7 @@ npm run build
 npm run lint:md
 npm run check:skills
 node skills/lark-beautifier/scripts/self-check.mjs
+npm run package:skill
 ```
 
 ## 安全约束
