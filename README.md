@@ -8,19 +8,19 @@ The current v3 direction is visual-first: the formatter still handles typography
 
 ## Before / After Examples
 
-These examples use professional UE5 technical articles with text, tables, code/CVar snippets, rendered Mermaid flowcharts, timelines, and image blocks. The article content was written against Epic's official UE5 documentation for Nanite, Virtual Shadow Maps, and Lumen, then passed through `lark-beautifier` and the aligned screenshot comparison skill.
+These examples use professional rendering-engine technical articles with text, tables, code snippets, rendered Mermaid flowcharts, and launch checklists. The article content was written against Epic's World Partition documentation, Android game performance guidance, the Vulkan Guide, and Arm mobile GPU best practices, then passed through `lark-beautifier` and the aligned screenshot comparison skill.
 
-### Nanite Technical Details
+### UE5 World Partition Technical Details
 
-![UE5 Nanite raw vs lark-beautifier comparison](doc/assets/readme/ue5-nanite-comparison.png)
+![UE5 World Partition raw vs lark-beautifier comparison](doc/assets/readme/mobile-world-partition-comparison.png)
 
-### Virtual Shadow Maps Technical Details
+### Mobile Rendering Pipeline Optimization
 
-![UE5 VSM raw vs lark-beautifier comparison](doc/assets/readme/ue5-vsm-comparison.png)
+![Mobile rendering pipeline raw vs lark-beautifier comparison](doc/assets/readme/mobile-render-pipeline-comparison.png)
 
-### Lumen Technical Details
+### Mobile Vulkan Rendering
 
-![UE5 Lumen raw vs lark-beautifier comparison](doc/assets/readme/ue5-lumen-comparison.png)
+![Mobile Vulkan raw vs lark-beautifier comparison](doc/assets/readme/mobile-vulkan-comparison.png)
 
 ## Features
 
@@ -82,8 +82,8 @@ If your Markdown references local images, Feishu cannot download those relative 
 ```bash
 lark-cli docs +media-insert --as bot \
   --doc "https://www.feishu.cn/docx/..." \
-  --file doc/assets/readme/ue5-lumen-diagram.svg \
-  --caption "Lumen rendering path"
+  --file doc/assets/readme/mobile-vulkan-comparison.png \
+  --caption "Mobile Vulkan comparison"
 ```
 
 ## CLI Usage
@@ -242,7 +242,7 @@ Do not commit app secrets, access tokens, refresh tokens, or local OAuth storage
 
 The README screenshots were generated with this pipeline:
 
-1. Draft raw UE5 Markdown articles under `tmp/readme-demo/`.
+1. Draft raw rendering-engine Markdown articles under `tmp/readme-demo/`.
 2. Create raw Feishu documents with `lark-cli docs +create --as bot --markdown @tmp/readme-demo/<article>-raw.md`.
 3. Beautify the Markdown with `lark-beautifier`.
 4. Create beautified Feishu documents with `lark-cli docs +create --as bot --markdown @tmp/readme-demo/<article>-beautified.md`.
@@ -254,8 +254,8 @@ Commands:
 node tools/generate-readme-demo.mjs
 
 node skills/lark-beautifier/scripts/beautify.mjs \
-  tmp/readme-demo/ue5-nanite-raw.md \
-  --output tmp/readme-demo/ue5-nanite-beautified.md \
+  tmp/readme-demo/ue5-world-partition-raw.md \
+  --output tmp/readme-demo/ue5-world-partition-beautified.md \
   --mode structured \
   --theme technical-blue \
   --components auto \
@@ -264,28 +264,29 @@ node skills/lark-beautifier/scripts/beautify.mjs \
   --enhancements off
 
 lark-cli docs +create --as bot \
-  --title "UE5 Nanite Technical Details (Raw)" \
-  --markdown "@tmp/readme-demo/ue5-nanite-raw.md"
+  --title "UE5 World Partition Technical Details (Raw)" \
+  --markdown "@tmp/readme-demo/ue5-world-partition-raw.md"
 
 lark-cli docs +create --as bot \
-  --title "UE5 Nanite Technical Details (Beautified)" \
-  --markdown "@tmp/readme-demo/ue5-nanite-beautified.md"
+  --title "UE5 World Partition Technical Details (Beautified)" \
+  --markdown "@tmp/readme-demo/ue5-world-partition-beautified.md"
 
 node skills/aligned-screenshot-compare/scripts/align-compare.mjs \
-  --left tmp/readme-demo/ue5-nanite-raw.md \
-  --right tmp/readme-demo/ue5-nanite-beautified.md \
+  --left tmp/readme-demo/ue5-world-partition-raw.md \
+  --right tmp/readme-demo/ue5-world-partition-beautified.md \
   --left-title "Raw Feishu document" \
   --right-title "lark-beautifier output" \
-  --out-html tmp/readme-demo/ue5-nanite-compare.html \
-  --out-png doc/assets/readme/ue5-nanite-comparison.png \
+  --out-html tmp/readme-demo/ue5-world-partition-compare.html \
+  --out-png doc/assets/readme/mobile-world-partition-comparison.png \
   --presentation
 ```
 
-Repeat the same commands for `ue5-vsm` and `ue5-lumen`. Source references:
+Repeat the same commands for `mobile-render-pipeline` and `mobile-vulkan`. Source references:
 
-- Epic Games: [Nanite Virtualized Geometry in Unreal Engine](https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine).
-- Epic Games: [Virtual Shadow Maps in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/virtual-shadow-maps-in-unreal-engine).
-- Epic Games: [Lumen Global Illumination and Reflections](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-global-illumination-and-reflections-in-unreal-engine) / [Lumen Technical Details](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine).
+- Epic Games: [World Partition in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine), [World Partition HLOD](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---hierarchical-level-of-detail-in-unreal-engine), and [World Partition Data Layers](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---data-layers-in-unreal-engine).
+- Android Developers: [Optimize your game](https://developer.android.com/games/optimize), [Android Frame Pacing](https://developer.android.com/games/sdk/frame-pacing), and [Android GPU Inspector](https://developer.android.com/agi).
+- Khronos Group: [Vulkan Guide](https://docs.vulkan.org/guide/latest/).
+- Arm: [Mali GPU Best Practices](https://developer.arm.com/documentation/101897/latest).
 
 ## Development
 

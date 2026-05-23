@@ -2,231 +2,244 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const outDir = resolve("tmp/readme-demo");
-const assetDir = resolve("doc/assets/readme");
 await mkdir(outDir, { recursive: true });
-await mkdir(assetDir, { recursive: true });
 
 const articles = [
   {
-    slug: "nanite",
-    title: "UE5 Nanite 虚拟化几何技术拆解",
-    imageTitle: "Nanite Virtualized Geometry",
-    accent: "#2563eb",
-    official: [
-      "https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine"
-    ],
+    slug: "ue5-world-partition",
+    title: "UE5 World Partition 技术细节",
     summary:
-      "Nanite 是 UE5 的虚拟化几何系统，官方定位是通过内部网格格式和渲染路径实现像素级细节与高对象数量。它把高精度网格离线拆分成 Cluster 层级，运行时只处理屏幕可见且需要的细节，并配合压缩格式、细粒度流送和自动 LOD 降低手工资产维护成本。",
+      "World Partition 是 UE5 面向大世界的关卡管理与流送体系。它把持久化关卡自动拆分为网格单元，通过 Streaming Source、Runtime Grid、Data Layer、HLOD 和 One File Per Actor 协同，让编辑器协作、运行时加载和开放世界构建进入同一套数据路径。",
     kpis: [
-      ["核心单位", "Cluster / Cluster Group"],
-      ["运行目标", "按像素级需求选择细节"],
-      ["主要收益", "减少手工 LOD 与烘焙负担"],
-      ["主要边界", "材质、变形与平台支持受限"]
+      ["核心粒度", "Actor / Cell / Runtime Grid"],
+      ["流送驱动", "Streaming Source + 距离阈值"],
+      ["协作方式", "One File Per Actor"],
+      ["关键配套", "Data Layer + HLOD"]
     ],
     imageCaption:
-      "示意图：Nanite 的数据路径不是传统 Static Mesh 直接提交三角形，而是先构建层级 Cluster，再由运行时选择可见 Cluster。",
+      "示意图：World Partition 把世界划分为运行时网格，Streaming Source 决定加载哪些 cell，HLOD 为远景提供聚合代理。",
     sections: [
       [
-        "为什么 Nanite 改变资产管线",
+        "系统定位：从手工子关卡到自动分区",
         [
-          "传统实时项目通常需要在 DCC、烘焙、LOD、碰撞和流送之间反复折中。Nanite 的目标不是让面数限制消失，而是把几何细节管理转移到引擎内部：美术可以更直接地导入扫描、雕刻或影视级高模，运行时系统再决定当前视角真正需要哪些细节。",
-          "这不等于“无限多边形”。Nanite 仍然受材质复杂度、遮挡效率、实例数量、显存、平台 RHI 和渲染路径约束。正确理解它的关键，是把它看成一套虚拟几何数据库和可见性驱动的 rasterizer，而不是单纯的 LOD 开关。"
+          "传统开放世界通常依赖人工维护多个 streaming level：关卡设计、美术、任务脚本和运行时加载策略耦合在一起，团队越大越容易出现文件冲突、加载边界不一致和远景代理维护成本。",
+          "World Partition 的关键变化是把世界拆分规则放进引擎数据模型。编辑器里仍然面对一个持久化世界，但保存时 actor 可以分散到独立文件；运行时系统再根据网格、距离和数据层状态决定哪些 cell 进入内存。"
         ]
       ],
       [
-        "离线构建：从 Triangle 到 Cluster DAG",
+        "运行时网格与 Cell",
         [
-          "导入阶段会把网格划分为很多小 Cluster，并把相邻 Cluster 组织成层级结构。每个层级携带边界、误差、材质分组和压缩后的几何数据。运行时不需要一次性加载整份高模，而是把可见 Cluster 对应的数据页流送到 GPU。",
-          "Cluster 层级的价值在于“局部替换”：远处像素覆盖小的区域可以使用更粗的父级表示，近处再逐步展开子级。由于选择依据接近屏幕误差而不是固定距离，Nanite 在大尺度场景中能比传统 LOD 更稳定。"
+          "Runtime Grid 定义世界如何被切成 cell。较粗的网格适合低频大对象或远景结构，较细的网格适合需要精确流送的 gameplay 区域。一个项目可以配置多个 runtime grid，但网格越多，调试和 HLOD 生成成本也会增加。",
+          "Cell 的加载不是简单的二维格子开关。引擎会结合 Streaming Source 的位置、半径、优先级、目标状态和 Data Layer 状态计算加载集合。玩家 Pawn、摄像机、传送目标、过场镜头或自定义组件都可以成为流送源。"
         ]
       ],
       [
-        "运行时流程图",
+        "一帧中的流送决策",
         [
-          "下面的 Mermaid 流程图概括了 Nanite 在一帧中的高层路径。真实实现还包含软件/硬件光栅分支、HZB 遮挡、page residency 和 material resolve 等细节。"
+          "下面的流程图概括 World Partition 在运行时从流送源到可见世界的核心路径。真实项目还会叠加异步 IO、对象初始化、蓝图 BeginPlay、导航和物理状态切换。"
         ],
-        "```mermaid\nflowchart TD\n  A[Static Mesh Import] --> B[Build Nanite Cluster Hierarchy]\n  B --> C[Compressed Page Store]\n  C --> D[Runtime View + Instance Culling]\n  D --> E[HZB Occlusion]\n  D --> F[Screen Error Selection]\n  E --> G[Request Resident Pages]\n  F --> G\n  G --> H[Nanite Rasterization]\n  H --> I[Depth / Visibility Buffer]\n  I --> J[Material Resolve + GBuffer]\n```"
+        "```mermaid\nflowchart TD\n  A[Streaming Source Update] --> B[Runtime Grid Query]\n  B --> C[Select Candidate Cells]\n  C --> D{Data Layer Active?}\n  D -- Yes --> E[Request Cell Load]\n  D -- No --> F[Keep Cell Unloaded]\n  E --> G[Async Package Load]\n  G --> H[Actor Registration]\n  H --> I[Visibility and Gameplay Ready]\n  C --> J[HLOD Range Check]\n  J --> K[Use HLOD Proxy for Far Cells]\n```"
       ],
       [
-        "关键数据结构与成本",
+        "Data Layer：同一空间的多套状态",
         [
-          "Nanite 的成本通常不来自“原始三角形总数”本身，而来自屏幕上实际可见的微三角形、材质切换、实例数量、遮挡失败、page miss 以及非 Nanite 物体的混合渲染。",
-          "Fallback Mesh 仍然重要。官方文档指出，不支持 Nanite 的渲染路径、碰撞、某些烘焙和射线追踪路径会依赖 fallback；Fallback Relative Error 太高会让这些路径失真，太低又会增加内存和构建成本。"
+          "Data Layer 让同一个空间位置可以拥有不同逻辑状态，例如昼夜版本、任务阶段、破坏前后、地下/地上切换或编辑器组织分组。运行时 Data Layer 切换会影响 cell 的加载集合，因此它既是内容组织工具，也是 gameplay 状态的一部分。",
+          "风险在于把 Data Layer 当作万能开关。若频繁切换大范围 Data Layer，可能触发大量 actor 加载、初始化和 GC；若把 gameplay 依赖拆得过细，又会让 QA 难以覆盖状态组合。"
         ]
       ],
       [
-        "配置与调试代码",
-        [],
-        "```ini\n; DefaultEngine.ini 示例：项目级 Nanite 相关设置通常与 RHI / Shader Model 一起检查\n[/Script/Engine.RendererSettings]\nr.Nanite.ProjectEnabled=True\nr.RayTracing=True\n\n; 常用运行时排查命令\nr.Nanite.Visualize 1\nr.Nanite.ShowStats 1\nr.Nanite.Streaming.StreamingPoolSize 512\n```"
-      ],
-      [
-        "版本演进时间线",
+        "HLOD 与远景成本",
         [
-          "Nanite 从 UE5.0 开始承担虚拟几何核心角色，后续版本逐步扩展到更多材质和植被相关场景。实际项目应以目标 UE 版本的官方支持矩阵为准。"
-        ],
-        "- UE5.0：Nanite 成为 UE5 虚拟几何核心能力，主要面向静态高精度网格。\n- UE5.1：与 World Partition、HLOD、虚拟阴影贴图等大型场景路径进一步协同。\n- UE5.2-UE5.3：持续改善 foliage、masked material、instance 和调试工具体验。\n- UE5.4+：更多生产场景开始把 Nanite 作为默认高模资产入口，同时保留 fallback 与平台分级策略。"
-      ],
-      [
-        "上线检查清单",
-        [
-          "- 检查目标平台是否支持 Nanite 所需的 RHI 与 Shader Model。\n- 检查 masked、two-sided、WPO 或透明材质是否落入官方支持边界。\n- 用 Nanite visualization 查看 cluster、overdraw、page miss 和 fallback。\n- 对重要资产保留合理 fallback mesh，避免碰撞、烘焙或 RT 路径失真。\n- 在真实关卡镜头中测量 GPU 时间，不只看资产面数。"
-        ]
-      ]
-    ]
-  },
-  {
-    slug: "vsm",
-    title: "UE5 Virtual Shadow Maps 阴影系统拆解",
-    imageTitle: "Virtual Shadow Maps",
-    accent: "#7c3aed",
-    official: [
-      "https://dev.epicgames.com/documentation/en-us/unreal-engine/virtual-shadow-maps-in-unreal-engine"
-    ],
-    summary:
-      "Virtual Shadow Maps（VSM）是 UE5 面向 Nanite、Lumen 与 World Partition 场景的高分辨率阴影路径。官方文档把它描述为虚拟化的超高分辨率 shadow map：逻辑上可达到 16K x 16K，物理上以 128 x 128 page 为单位按需分配、缓存和失效。",
-    kpis: [
-      ["虚拟分辨率", "16K x 16K 级别"],
-      ["Page 粒度", "128 x 128 texels"],
-      ["核心策略", "按需分配 + 缓存"],
-      ["主要风险", "动态失效与 page thrashing"]
-    ],
-    imageCaption:
-      "示意图：VSM 把阴影贴图虚拟化为 page cache，摄像机和光源变化只更新需要的页面。",
-    sections: [
-      [
-        "为什么传统 Shadow Map 不够用",
-        [
-          "UE5 的 Nanite 场景常包含海量几何细节。如果继续依赖低分辨率 cascaded shadow map，近景阴影会出现锯齿、游泳和接触阴影不足；如果简单提高整张 shadow map 分辨率，显存、带宽和渲染成本会迅速失控。",
-          "VSM 的核心思路与虚拟纹理类似：逻辑上提供极高分辨率的阴影空间，物理上只为屏幕当前需要的区域分配 page。这样可以让近景接触阴影获得更多 texel，同时让远处或不可见区域不占用完整成本。"
-        ]
-      ],
-      [
-        "Page 缓存与失效机制",
-        [
-          "每个 VSM page 对应阴影空间中的一个固定区域。页面可以在多帧之间缓存；当光源、投影物、接收物或相关材质状态变化时，缓存会失效并重新渲染。静态场景收益很高，动态场景则可能因为大量 page invalidation 或 cache miss 产生尖峰。",
-          "VSM 与 Nanite 的关系很紧密：Nanite 能高效提交可见几何，VSM 则在阴影 pass 中按需请求局部高分辨率。这也是 UE5 大场景中 Lumen、Nanite、VSM 经常一起讨论的原因。"
-        ]
-      ],
-      [
-        "运行时流程图",
-        [
-          "下面的流程图展示 VSM 一帧内从接收像素到 page 渲染的概念路径。实际系统会继续处理 directional light clipmap、局部光源 atlas、SMRT 软阴影和缓存失效细节。"
-        ],
-        "```mermaid\nflowchart TD\n  A[Camera View] --> B[Find Shadow Receivers]\n  B --> C[Project Receiver Pixels into Light Space]\n  C --> D[Mark Needed Virtual Pages]\n  D --> E{Page Cache Resident?}\n  E -- Yes --> F[Reuse Cached Shadow Page]\n  E -- No --> G[Render Missing Page from Light View]\n  G --> H[Update Physical Page Cache]\n  F --> I[Sample Virtual Shadow Map]\n  H --> I\n  I --> J[Shadowed Lighting Result]\n```"
-      ],
-      [
-        "Directional Light、Local Light 与 Clipmap",
-        [
-          "Directional Light 通常使用 clipmap 思路覆盖从近景到远景的不同范围；局部光源则更像按光源组织的虚拟 shadow atlas。两者都使用按需 page，但失效模式不同：太阳方向变化会影响大范围页面，局部动态光源则更容易把成本集中在局部热点。",
-          "VSM 的质量不是单个开关决定的。接触阴影锐度、软阴影半径、光源数量、动态物体比例、page cache 命中率共同决定最终 GPU 时间。"
+          "HLOD 用代理网格或聚合表示替代远处未加载的细节 cell。它不是单纯的美术优化，而是 World Partition 让开放世界保持远景连续性的必要配套：近景加载真实 actor，远景加载 HLOD proxy。",
+          "HLOD 构建质量会直接影响穿帮：代理几何过粗会导致远处轮廓跳变，材质烘焙不一致会暴露切换，Cell 边界设计不合理会让 HLOD cluster 出现不自然分块。"
         ]
       ],
       [
         "配置与排查代码",
         [],
-        "```ini\n[/Script/Engine.RendererSettings]\nr.Shadow.Virtual.Enable=1\nr.Shadow.Virtual.SMRT.SamplesPerRayLocal=8\nr.Shadow.Virtual.SMRT.SamplesPerRayDirectional=8\n\n; 排查 page 分配、缓存和 clipmap\nr.Shadow.Virtual.ShowStats 1\nr.Shadow.Virtual.Visualize cache\nr.Shadow.Virtual.Cache 1\n```"
-      ],
-      [
-        "版本演进时间线",
-        [
-          "VSM 在 UE5 中承担高质量动态阴影路径，随着 Nanite 与 Lumen 的生产使用逐步成熟。项目上线时应根据目标平台、帧预算和光源策略设定分级。"
-        ],
-        "- UE5.0：VSM 作为高质量阴影路径进入 UE5，与 Nanite 场景一起解决高密度几何阴影。\n- UE5.1：缓存、clipmap 与局部光源稳定性继续改善。\n- UE5.2-UE5.3：针对动态物体、植被、SMRT 软阴影和统计可视化持续优化。\n- UE5.4+：更多项目把 VSM 作为高端平台默认阴影方案，并为中低端平台保留传统 shadow map 分级。"
+        "```ini\n[/Script/Engine.WorldPartitionRuntimeSpatialHash]\nCellSize=12800\nLoadingRange=76800\n\n; 常见排查命令，具体可用项以目标 UE 版本为准\nwp.Runtime.ToggleDrawRuntimeHash2D\nwp.Runtime.ToggleDrawRuntimeHash3D\nwp.Runtime.DumpState\n```"
       ],
       [
         "上线检查清单",
         [
-          "- 用真实关卡镜头查看 page cache 命中率和 invalidation 尖峰。\n- 控制可移动光源数量，避免多个大范围动态阴影叠加。\n- 检查 foliage、WPO、skeletal mesh 对缓存失效的影响。\n- 为低端平台准备阴影质量分级，不要假设 VSM 总是默认可承受。\n- 对电影级镜头和游戏镜头分别测量，二者 page 访问模式不同。"
+          "- 明确每个 Runtime Grid 的 CellSize、LoadingRange 和内容类型，不让所有 actor 都落入默认网格。",
+          "- 用真实移动速度、传送、载具和过场镜头测试 Streaming Source，观察加载尖峰和可见性空洞。",
+          "- 把 Data Layer 状态组合列入 QA 矩阵，特别是任务阶段和破坏状态。",
+          "- 为远景核心地标单独检查 HLOD 代理、材质一致性和切换距离。",
+          "- 保持 One File Per Actor 工作流，减少多人编辑同一大关卡文件的冲突。"
         ]
       ]
+    ],
+    references: [
+      "https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine",
+      "https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---hierarchical-level-of-detail-in-unreal-engine",
+      "https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---data-layers-in-unreal-engine"
     ]
   },
   {
-    slug: "lumen",
-    title: "UE5 Lumen 全局光照与反射技术拆解",
-    imageTitle: "Lumen GI & Reflections",
-    accent: "#0891b2",
-    official: [
-      "https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-global-illumination-and-reflections-in-unreal-engine",
-      "https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine"
-    ],
+    slug: "mobile-render-pipeline",
+    title: "移动端渲染的管线优化",
     summary:
-      "Lumen 是 UE5 的动态全局光照与反射系统。它结合 Screen Traces、Surface Cache、软件/硬件 Ray Tracing 与 Final Gather，让场景在光源、材质和几何变化后获得可交互的间接光与反射响应，并用多级近似在实时预算内逼近离线光照效果。",
+      "移动端渲染优化不是把 PC 渲染管线简单降档，而是在 CPU 提交、GPU tile memory、带宽、功耗、热限制和帧节奏之间重新分配预算。真正稳定的管线需要把场景组织、pass 合并、资源格式、帧 pacing 和 profiling 放进同一个闭环。",
     kpis: [
-      ["覆盖能力", "动态 GI + Reflections"],
-      ["近场优先", "Screen Traces"],
-      ["场景表示", "Surface Cache / Mesh Cards"],
-      ["质量边界", "镜面、薄物体、小几何、平台预算"]
+      ["首要瓶颈", "带宽 / Overdraw / Thermal"],
+      ["CPU 侧重点", "提交批次与线程同步"],
+      ["GPU 侧重点", "Tile 内完成与少写回"],
+      ["验证方式", "真机 profile + 长时运行"]
     ],
     imageCaption:
-      "示意图：Lumen 会先使用屏幕空间信息，再回退到场景表示与 ray tracing 路径，最后合成间接光和反射。",
+      "示意图：移动端渲染优化需要同时控制 CPU 提交、GPU pass 组织、内存带宽和最终呈现节奏。",
     sections: [
       [
-        "Lumen 解决了什么问题",
+        "移动 GPU 的预算模型",
         [
-          "传统静态光照依赖 Lightmass 烘焙，质量高但迭代慢，并且难以处理时间变化、破坏、开关灯和动态时间段。Lumen 的目标是让大多数间接光和反射在运行时响应变化，使开放世界、室内外切换和程序化场景更容易维护。",
-          "Lumen 不是离线路径追踪器。它为了实时性使用多层场景表示和近似：屏幕可见信息优先，屏幕外信息通过 Surface Cache、Mesh Distance Fields 或硬件 Ray Tracing 补足。理解这些回退路径，是调试漏光、黑斑、反射缺失和性能尖峰的基础。"
+          "多数移动 GPU 采用 tile-based rendering 思路：屏幕被切成小 tile，片元在片上内存里完成尽可能多的计算，最后再写回系统内存。只要中间 pass 频繁 store/load、过度使用全屏后处理或多次采样大纹理，带宽和功耗就会比 ALU 更早成为瓶颈。",
+          "优化目标因此不是单纯减少 draw call 或降低三角形数，而是让每一帧少搬数据、少重复 shading、少触发同步等待，并让设备在 5 到 20 分钟真实运行后仍能维持目标帧率。"
         ]
       ],
       [
-        "Surface Cache 与 Mesh Cards",
+        "CPU 提交：减少驱动和同步成本",
         [
-          "Lumen 会为场景表面建立可快速采样的表示。官方技术文档把 Surface Cache 描述为一种离线捕获附近材质属性的机制，运行时可以在光线命中时查表，而不必对完整材质进行昂贵求值；Card Placement 可用 `r.Lumen.Visualize.CardPlacement 1` 检查。",
-          "Mesh Cards 数量和表面覆盖质量会影响 Lumen 对复杂网格的理解。过于细碎、薄片化或封闭复杂的几何可能造成 Surface Cache 覆盖不足，表现为间接光或反射不稳定。"
+          "CPU 端常见问题是 draw call 过多、材质状态切换频繁、资源更新跨线程同步，以及每帧创建/销毁 GPU 对象。移动端 CPU 核心的持续频率受功耗限制明显，短时间不掉帧不代表长时间稳定。",
+          "有效策略包括：静态合批或实例化、材质变体收敛、渲染对象排序、缓存 pipeline/state、使用 ring buffer 管理动态 uniform，以及把可预计算的裁剪、LOD 和可见性结果提前到工作线程。"
         ]
       ],
       [
-        "运行时流程图",
+        "GPU Pass：把数据留在 tile 内",
         [
-          "Lumen 会尽量复用屏幕空间信息；当命中离开屏幕或需要屏幕外场景时，再查询 Lumen Scene / Surface Cache 或硬件 RT。"
+          "移动端最怕把中间结果反复写回系统内存。GBuffer 过宽、多个全屏 pass、未压缩 HDR buffer、深度纹理频繁采样，都会放大带宽压力。Forward+、clustered lighting 或经过压缩的 deferred 方案，需要根据目标设备实际测量。",
+          "对于 post-processing，优先合并 pass、降低中间 buffer 分辨率、避免不必要的 MSAA resolve，并明确哪些 attachment 可以 discard。UI、透明物和粒子要控制 overdraw，因为它们经常绕过早期深度收益。"
+        ]
+      ],
+      [
+        "管线优化闭环",
+        [
+          "下面的流程图强调“测量 -> 定位 -> 修改 -> 长测”的闭环。移动端优化如果只看编辑器或单次 benchmark，很容易漏掉热降频、后台干扰和机型差异。"
         ],
-        "```mermaid\nflowchart TD\n  A[Shaded Pixel] --> B[Screen Traces]\n  B --> C{Hit Visible Scene?}\n  C -- Yes --> D[Use Screen Result]\n  C -- No --> E[Trace Lumen Scene]\n  E --> F{Hardware RT Enabled?}\n  F -- Yes --> G[Triangle Ray Tracing]\n  F -- No --> H[Software RT via Mesh Distance Fields]\n  G --> I[Surface Cache Lookup]\n  H --> I\n  D --> J[Final Gather / Reflection Composite]\n  I --> J\n  J --> K[Indirect Lighting + Reflections]\n```"
+        "```mermaid\nflowchart TD\n  A[Target Device Matrix] --> B[Frame Time Capture]\n  B --> C{CPU Bound or GPU Bound?}\n  C -- CPU --> D[Batching / State Cache / Threading]\n  C -- GPU --> E[Pass Merge / Bandwidth / Overdraw]\n  D --> F[Build on Real Device]\n  E --> F\n  F --> G[Long Run Thermal Test]\n  G --> H{Stable Frame Pacing?}\n  H -- No --> B\n  H -- Yes --> I[Lock Quality Tier]\n```"
       ],
       [
-        "软件 RT 与硬件 RT 的取舍",
+        "资源格式与内存",
         [
-          "软件 Ray Tracing 主要依赖 Mesh Distance Fields，适合较宽泛的 GI 查询，但对薄物体、非均匀缩放、复杂小结构的表达有限。硬件 Ray Tracing 可以追踪三角形，反射质量和几何一致性更好，但需要更高端平台和更高 GPU 成本。",
-          "项目不应该只用一个开关判断 Lumen 质量。室内、镜面、半粗糙材质、室外大世界和角色近景对 Lumen 的压力不同，需要分别做 profile。"
+          "纹理格式通常比美术分辨率更容易被忽视。ASTC/ETC2 等压缩格式可以显著降低带宽和包体，但法线、HDR、UI 和字体需要分开评估质量。大纹理 atlas 能减少绑定切换，但过大也会降低缓存命中并增加上传成本。",
+          "几何资源同样需要移动端口径：压缩顶点属性、避免不必要的 tangent/UV、控制 skinning bone 数量、为远景准备 LOD 或 impostor。资源优化必须和实际 shader 读取路径一起看，否则只是把瓶颈从显存挪到 ALU。"
         ]
       ],
       [
         "配置与排查代码",
         [],
-        "```ini\n[/Script/Engine.RendererSettings]\nr.DynamicGlobalIlluminationMethod=1 ; Lumen\nr.ReflectionMethod=1                 ; Lumen Reflections\nr.GenerateMeshDistanceFields=True\nr.Lumen.HardwareRayTracing=1\n\n; 常用排查命令\nr.Lumen.Visualize.CardPlacement 1\nr.Lumen.ScreenProbeGather.VisualizeTraces 1\nr.Lumen.Reflections.VisualizeTraces 1\n```"
-      ],
-      [
-        "版本演进时间线",
-        [
-          "Lumen 从 UE5.0 开始替代大量实时 GI hack，后续版本持续提升高端平台质量和项目可控性。具体特性仍应以项目 UE 版本和平台支持为准。"
-        ],
-        "- UE5.0：Lumen 成为 UE5 默认动态 GI/反射方向，支撑更快的光照迭代。\n- UE5.1：硬件 Ray Tracing、反射和高端平台质量继续增强。\n- UE5.2-UE5.3：Surface Cache、Screen Probe Gather、性能可视化和场景覆盖持续改进。\n- UE5.4+：更多项目采用 Lumen 作为高端实时 GI 方案，同时为移动端、VR 或低端平台保留替代路径。"
+        "```text\nFrame budget example for 60 FPS:\nCPU game + render submit  <= 6 ms\nGPU opaque + lighting     <= 6 ms\nPost + UI + present       <= 3 ms\nThermal / OS headroom     >= 1.6 ms\n\nChecklist:\n- Capture GPU counters on target devices\n- Sort transparent objects after opaque depth\n- Merge full-screen passes when inputs match\n- Avoid per-frame allocation of GPU resources\n```"
       ],
       [
         "上线检查清单",
         [
-          "- 打开 Lumen Scene、Surface Cache 和 Card Placement 可视化，检查覆盖是否完整。\n- 对镜面/半粗糙反射单独评估，必要时启用硬件 RT 或提高反射质量。\n- 检查小物体、薄墙、封闭复杂网格是否造成漏光或黑斑。\n- 分平台设置 GI 和 Reflection quality，不要把编辑器高端效果当作全平台默认。\n- 与 Nanite、VSM、TSR 一起 profile，因为它们共同决定 UE5 典型帧预算。"
+          "- 按高中低三档设备建立 profile 矩阵，不用单一旗舰机代表全部移动端。",
+          "- 同时记录 CPU frame time、GPU frame time、present interval、温度和频率。",
+          "- 对 overdraw、带宽、shader ALU、纹理采样和 render pass store/load 分别定位。",
+          "- 为画质档位保留可解释的开关：分辨率、阴影、后处理、反射、粒子和 UI 特效。",
+          "- 做 20 分钟以上长测，确认热稳定后的帧 pacing，而不是只看冷启动前两分钟。"
         ]
       ]
+    ],
+    references: [
+      "https://developer.android.com/games/optimize",
+      "https://developer.android.com/games/sdk/frame-pacing",
+      "https://developer.android.com/agi",
+      "https://developer.arm.com/documentation/101897/latest"
+    ]
+  },
+  {
+    slug: "mobile-vulkan",
+    title: "移动端 Vulkan 渲染",
+    summary:
+      "Vulkan 在移动端的价值是把驱动隐式工作显式化：应用自己管理 swapchain、command buffer、同步、descriptor、pipeline 和资源生命周期。它能降低 CPU 提交开销并提升多线程构建能力，但也会把同步错误、内存布局和设备差异暴露给引擎。",
+    kpis: [
+      ["核心收益", "低驱动开销 + 显式控制"],
+      ["关键对象", "Swapchain / Command Buffer / Pipeline"],
+      ["主要风险", "同步、生命周期、设备差异"],
+      ["调试工具", "Validation + AGI + RenderDoc"]
+    ],
+    imageCaption:
+      "示意图：移动端 Vulkan 渲染从 swapchain 获取图像，录制 command buffer，提交队列并通过同步对象控制呈现。",
+    sections: [
+      [
+        "为什么移动端需要 Vulkan",
+        [
+          "OpenGL ES 让驱动承担大量隐式状态管理，使用简单但 CPU 开销和跨设备行为更难预测。Vulkan 把 pipeline、descriptor、render pass、barrier 和队列提交显式交给应用，适合需要稳定帧时间和多线程提交的中大型移动游戏。",
+          "代价是复杂度上升。应用必须处理 swapchain 重建、图像布局转换、同步对象复用、内存分配策略、pipeline cache 和设备 feature probing。没有 validation、捕获工具和工程规范，Vulkan 项目很容易把偶发花屏变成长期问题。"
+        ]
+      ],
+      [
+        "Swapchain 与帧节奏",
+        [
+          "移动端 swapchain 配置要同时考虑延迟、吞吐和系统合成器。图像数量太少容易让 CPU/GPU 互相等待，太多又会增加输入延迟。Android 上还需要关注 surface 旋转、窗口尺寸变化、后台/前台切换和帧 pacing。",
+          "Frame pacing 库或平台节奏 API 的意义，是把游戏模拟、GPU submit 和 display present 对齐到稳定节拍。Vulkan 只提供显式提交能力，最终体验仍取决于是否避免长短帧交替。"
+        ]
+      ],
+      [
+        "Command Buffer 与多线程录制",
+        [
+          "Vulkan 的优势之一是 command buffer 可以在多个线程构建。常见做法是按 pass、可见性批次或场景区域生成 secondary command buffer，再由主线程组合提交。这样可以减少 render thread 峰值，但要求资源生命周期和 descriptor 更新足够稳定。",
+          "不要每帧重建所有对象。Pipeline、descriptor set layout、sampler、render pass 兼容信息和 pipeline cache 应该长期复用；每帧变化的数据放入 ring buffer 或动态 offset，避免 CPU 等待 GPU 读完上一帧资源。"
+        ]
+      ],
+      [
+        "一帧 Vulkan 渲染路径",
+        [
+          "下面的流程图展示移动端 Vulkan 一帧的基本路径。实际引擎会增加异步纹理上传、pipeline cache warming、GPU timestamp、debug markers 和设备丢失恢复。"
+        ],
+        "```mermaid\nflowchart TD\n  A[Acquire Swapchain Image] --> B[Wait Fence for Frame Slot]\n  B --> C[Update Ring Buffers]\n  C --> D[Record Command Buffers]\n  D --> E[Pipeline Barriers / Layout Transitions]\n  E --> F[Queue Submit]\n  F --> G[GPU Executes Render Passes]\n  G --> H[Signal Semaphore]\n  H --> I[Present]\n  I --> J{Swapchain Out of Date?}\n  J -- Yes --> K[Recreate Swapchain]\n  J -- No --> A\n```"
+      ],
+      [
+        "Render Pass、Subpass 与 Tile Memory",
+        [
+          "在 tile-based GPU 上，render pass 组织会显著影响带宽。把能在同一 tile 内完成的深度、颜色和 lighting 工作放进兼容的 render pass/subpass，可以减少中间 attachment 写回。相反，把每个效果拆成独立 pass 并频繁采样前一 pass 结果，会把 tile 优势抵消掉。",
+          "Attachment load/store op、transient attachment、MSAA resolve 和 layout transition 都需要明确写出意图。能 discard 的内容不要 store，能 transient 的 attachment 不要当长期纹理使用。"
+        ]
+      ],
+      [
+        "同步与内存管理",
+        [
+          "Vulkan 同步错误在移动端很常见：fence 复用过早、semaphore 链接错误、barrier stage mask 过宽或过窄、descriptor 指向已释放资源，都会产生偶现问题。同步策略应该围绕 frame-in-flight、队列所有权和资源生命周期建立统一约定。",
+          "内存分配方面，不建议为小 buffer/image 直接频繁调用底层分配。项目通常需要 sub-allocation、资源池、staging upload 队列和延迟销毁队列，保证 GPU 不再使用后再释放真实资源。"
+        ]
+      ],
+      [
+        "配置与排查代码",
+        [],
+        "```cpp\n// Per-frame high-level Vulkan loop\nvkAcquireNextImageKHR(device, swapchain, timeout, imageAvailable, VK_NULL_HANDLE, &imageIndex);\nvkWaitForFences(device, 1, &frameFence, VK_TRUE, UINT64_MAX);\nvkResetFences(device, 1, &frameFence);\nrecordCommandBuffer(cmd[frameIndex], imageIndex);\nsubmitInfo.waitSemaphoreCount = 1;\nsubmitInfo.pWaitSemaphores = &imageAvailable;\nsubmitInfo.signalSemaphoreCount = 1;\nsubmitInfo.pSignalSemaphores = &renderFinished;\nvkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFence);\nvkQueuePresentKHR(presentQueue, &presentInfo);\n```"
+      ],
+      [
+        "上线检查清单",
+        [
+          "- 默认开启 validation layer 的开发构建，并把同步 validation 作为 CI 或夜间测试的一部分。",
+          "- 对每个 GPU family 建立 feature/extension allowlist，不假设所有设备支持同一格式、采样数或 present mode。",
+          "- 使用 AGI、RenderDoc 或厂商工具检查 render pass、barrier、overdraw、带宽和 GPU timestamp。",
+          "- 缓存 pipeline 并预热关键 PSO，避免首战或切场景时 shader/pipeline 编译尖峰。",
+          "- 明确 swapchain 重建、后台恢复、设备丢失和窗口旋转路径，避免只覆盖理想启动流程。"
+        ]
+      ]
+    ],
+    references: [
+      "https://developer.android.com/games/develop/vulkan/overview",
+      "https://developer.android.com/games/sdk/frame-pacing",
+      "https://docs.vulkan.org/guide/latest/",
+      "https://developer.arm.com/documentation/101897/latest"
     ]
   }
 ];
 
 for (const article of articles) {
-  await writeFile(resolve(assetDir, `ue5-${article.slug}-diagram.svg`), renderSvg(article), "utf8");
-  await writeFile(resolve(outDir, `ue5-${article.slug}-raw.md`), renderRaw(article), "utf8");
+  await writeFile(resolve(outDir, `${article.slug}-raw.md`), renderRaw(article), "utf8");
 }
 
 console.log(JSON.stringify({
   outDir,
-  assetDir,
-  files: articles.map((article) => ({
-    raw: `tmp/readme-demo/ue5-${article.slug}-raw.md`,
-    image: `doc/assets/readme/ue5-${article.slug}-diagram.svg`
-  }))
+  files: articles.map((article) => `tmp/readme-demo/${article.slug}-raw.md`)
 }, null, 2));
 
 function renderRaw(article) {
-  const kpi = article.kpis.map(([label, value]) => `**${label}**：${value}`).join("\n");
+  const kpiLines = article.kpis.map(([label, value]) => `**${label}**：${value}`).join("\n");
   const tableRows = article.kpis.map(([label, value]) => `| ${label} | ${value} |`).join("\n");
   const body = article.sections
     .map(([heading, paragraphs, extra]) => {
@@ -238,9 +251,7 @@ function renderRaw(article) {
 
 摘要：${article.summary}
 
-${kpi}
-
-![${article.imageTitle}](../../doc/assets/readme/ue5-${article.slug}-diagram.svg)
+${kpiLines}
 
 ${article.imageCaption}
 
@@ -254,55 +265,6 @@ ${body}
 
 ## 官方参考
 
-${article.official.map((url) => `- ${url}`).join("\n")}
+${article.references.map((url) => `- ${url}`).join("\n")}
 `;
-}
-
-function renderSvg(article) {
-  const nodes = article.slug === "nanite"
-    ? ["Import", "Cluster Build", "Page Store", "Cull + Select", "Rasterize", "GBuffer"]
-    : article.slug === "vsm"
-      ? ["Receivers", "Virtual Pages", "Cache Check", "Render Missing", "Sample", "Lighting"]
-      : ["Pixel", "Screen Trace", "Lumen Scene", "Surface Cache", "Final Gather", "GI + Reflections"];
-  const nodeWidth = 150;
-  const gap = 38;
-  const startX = 58;
-  const y = 230;
-  const boxes = nodes.map((label, index) => {
-    const x = startX + index * (nodeWidth + gap);
-    const lines = [
-      `<rect x="${x}" y="${y}" width="${nodeWidth}" height="78" rx="14" fill="#ffffff" stroke="${article.accent}" stroke-width="3"/>`,
-      `<text x="${x + nodeWidth / 2}" y="${y + 46}" text-anchor="middle" font-size="20" font-weight="700" fill="#172033">${escapeXml(label)}</text>`
-    ];
-    if (index < nodes.length - 1) {
-      lines.push(`<path d="M ${x + nodeWidth + 8} ${y + 39} L ${x + nodeWidth + gap - 10} ${y + 39}" stroke="${article.accent}" stroke-width="4" marker-end="url(#arrow)"/>`);
-    }
-    return lines.map((line) => `  ${line}`).join("\n");
-  }).join("\n");
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="520" viewBox="0 0 1180 520">
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#f8fbff"/>
-      <stop offset="100%" stop-color="#eef4ff"/>
-    </linearGradient>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="${article.accent}"/>
-    </marker>
-  </defs>
-  <rect width="1180" height="520" fill="url(#bg)"/>
-  <rect x="34" y="34" width="1112" height="452" rx="28" fill="#ffffff" stroke="#d9e2ef" stroke-width="2"/>
-  <text x="70" y="100" font-size="34" font-weight="800" fill="#172033">${escapeXml(article.imageTitle)}</text>
-  <text x="70" y="140" font-size="18" fill="#657187">${escapeXml(article.summary.slice(0, 88))}...</text>
-  ${boxes}
-  <text x="70" y="410" font-size="18" fill="#657187">${escapeXml(article.imageCaption)}</text>
-</svg>`;
-}
-
-function escapeXml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
