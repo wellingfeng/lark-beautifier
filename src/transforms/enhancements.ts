@@ -1,7 +1,8 @@
 import type { Heading, Root, RootContent } from "mdast";
 import type { BeautifierConfig } from "../config.js";
 import { textContent } from "../analyzer.js";
-import type { LarkEnhancementNode } from "../types.js";
+import type { BeautifierRoot, LarkEnhancementNode } from "../types.js";
+import type { SignalReport } from "../analyze/signals.js";
 
 type EnhancementKind = LarkEnhancementNode["kind"];
 
@@ -109,6 +110,11 @@ export function transformEnhancements(tree: Root, config: BeautifierConfig): voi
 
   const output: RootContent[] = [];
   const insertedKinds = new Set<EnhancementKind>();
+  const report = (tree as BeautifierRoot).larkBeautifier?.analysis;
+  const activeComponents = new Set(
+    Array.isArray(config.components) ? config.components.map((name) => name.trim().toLowerCase()) : []
+  );
+  const componentsAuto = config.components === "auto";
 
   for (const node of tree.children) {
     output.push(node);
@@ -133,6 +139,8 @@ export function transformEnhancements(tree: Root, config: BeautifierConfig): voi
     output.push(makeEnhancement(rule, heading, config) as unknown as RootContent);
   }
 
+  appendAnalysisEnhancements(output, report, insertedKinds, config, activeComponents, componentsAuto);
+
   tree.children = output;
 }
 
@@ -144,5 +152,94 @@ function makeEnhancement(rule: EnhancementRule, heading: string, config: Beautif
     rationale: rule.rationale,
     actions: rule.actions,
     artifact: rule.artifact(heading, config.enhancements)
+  };
+}
+
+function appendAnalysisEnhancements(
+  output: RootContent[],
+  report: SignalReport | undefined,
+  insertedKinds: Set<EnhancementKind>,
+  config: BeautifierConfig,
+  activeComponents: Set<string>,
+  componentsAuto: boolean
+): void {
+  if (!report) return;
+
+  if (!insertedKinds.has("chart") && report.components.kpiCardRow && !componentAlreadyApplied("kpi-card-row")) {
+    insertedKinds.add("chart");
+    output.push(makeAnalysisEnhancement({
+      kind: "chart",
+      title: "视觉增强建议：指标卡片",
+      rationale: `检测到 ${report.components.kpiCardRow.items.length} 个并列指标，可升级为 kpi-card-row，比普通段落更容易扫读。`,
+      actions: [
+        "仅使用原文已有指标和值，不补充缺失口径。",
+        "可先运行 --components kpi-card-row 预览组件化效果。"
+      ],
+      artifact: config.enhancements === "draft"
+        ? {
+            type: "prompt",
+            value: report.components.kpiCardRow.items
+              .map((item) => `${item.label}: ${item.value}`)
+              .join("\n")
+          }
+        : undefined
+    }) as unknown as RootContent);
+  }
+
+  if (!insertedKinds.has("layout") && report.components.timeline && !componentAlreadyApplied("timeline")) {
+    insertedKinds.add("layout");
+    output.push(makeAnalysisEnhancement({
+      kind: "layout",
+      title: "视觉增强建议：时间线",
+      rationale: `检测到 ${report.components.timeline.phases.length} 个按时间或阶段排列的事项，适合转成 timeline 表格。`,
+      actions: [
+        "保持原文时间顺序，不推断日期。",
+        "可先运行 --components timeline 预览三列表格版本。"
+      ],
+      artifact: config.enhancements === "draft"
+        ? {
+            type: "mermaid",
+            value: [
+              "timeline",
+              "  title 时间线",
+              ...report.components.timeline.phases.map((phase) => `  ${phase.when} : ${phase.what}`)
+            ].join("\n")
+          }
+        : undefined
+    }) as unknown as RootContent);
+  }
+
+  if (!insertedKinds.has("layout") && report.components.beforeAfter && !componentAlreadyApplied("before-after")) {
+    insertedKinds.add("layout");
+    output.push(makeAnalysisEnhancement({
+      kind: "layout",
+      title: "视觉增强建议：Before / After",
+      rationale: `检测到「${report.components.beforeAfter.beforeHeading}」与「${report.components.beforeAfter.afterHeading}」这组前后对比，适合转成双栏 before-after。`,
+      actions: [
+        "左右两栏只承载原小节内容。",
+        "如果任一侧内容超过 4 个块，保留普通章节比双栏更稳。"
+      ]
+    }) as unknown as RootContent);
+  }
+
+  function componentAlreadyApplied(component: string): boolean {
+    return componentsAuto || activeComponents.has(component);
+  }
+}
+
+function makeAnalysisEnhancement(input: {
+  kind: EnhancementKind;
+  title: string;
+  rationale: string;
+  actions: string[];
+  artifact?: LarkEnhancementNode["artifact"];
+}): LarkEnhancementNode {
+  return {
+    type: "larkEnhancement",
+    kind: input.kind,
+    title: input.title,
+    rationale: input.rationale,
+    actions: input.actions,
+    artifact: input.artifact
   };
 }

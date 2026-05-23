@@ -51,29 +51,40 @@ Use grids for two or three comparable short sections.
 Use `<lark-table>` only for complex or decision-oriented tables. Keep simple data tables as Markdown tables.
 
 ```html
-<lark-table column-widths="160,240">
-<thead>
-<tr>
-<th>风险</th>
-<th>缓解计划</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>URL 被插入空格</td>
-<td>跳过 link 和 inlineCode 节点</td>
-</tr>
-</tbody>
+<lark-table column-widths="160,240" header-row="true">
+<lark-tr>
+<lark-td>
+**风险**
+</lark-td>
+<lark-td>
+**缓解计划**
+</lark-td>
+</lark-tr>
+<lark-tr>
+<lark-td>
+URL 被插入空格
+</lark-td>
+<lark-td>
+跳过 link 和 inlineCode 节点
+</lark-td>
+</lark-tr>
 </lark-table>
 ```
 
 ### Whiteboard
 
-Default to a suggestion callout. Insert a blank whiteboard only when requested.
+For visual-first documents, use whiteboards proactively for process, architecture,
+timeline, dependency, org, and causal content. Insert a blank whiteboard only when
+the workflow will immediately fill it through `lark-whiteboard` / `lark-whiteboard-cli`.
+For existing high-stakes documents or ambiguous requests, use a suggestion callout first.
 
 ```html
 <whiteboard type="blank"></whiteboard>
 ```
+
+Do not leave a newly created Lark document with blank whiteboards. Capture `board_tokens`
+from `docs +create` / `docs +update`, then update each board before considering the
+task complete.
 
 ## Safety Rules
 
@@ -82,4 +93,4 @@ Default to a suggestion callout. Insert a blank whiteboard only when requested.
 - Do not alter fenced code, inline code, links, image URLs, raw HTML, or existing Lark XML blocks.
 - Render Lark XML blocks after generic Markdown formatting so they are not escaped.
 - Use conservative mode for legal, financial, medical, or executive documents.
-
+- Do not fabricate diagram relationships, chart values, image captions, or social-card claims.

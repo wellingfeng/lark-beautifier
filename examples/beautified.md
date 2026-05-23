@@ -31,29 +31,49 @@
 
 ## 风险矩阵
 
-<lark-table column-widths="120,120,134,152">
-<thead>
-<tr>
-<th>风险</th>
-<th>影响</th>
-<th>负责人</th>
-<th>缓解计划</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>飞书 XML 被转义</td>
-<td>文档块不可用</td>
-<td>平台组</td>
-<td>renderer 最后输出，不再交给通用 formatter</td>
-</tr>
-<tr>
-<td>URL 被插入空格</td>
-<td>链接损坏</td>
-<td>工具组</td>
-<td>AST 层跳过 link 和 inlineCode</td>
-</tr>
-</tbody>
+<lark-table column-widths="160,160,120,360" header-row="true">
+<lark-tr>
+<lark-td>
+**风险**
+</lark-td>
+<lark-td>
+**影响**
+</lark-td>
+<lark-td>
+**负责人**
+</lark-td>
+<lark-td>
+**缓解计划**
+</lark-td>
+</lark-tr>
+<lark-tr>
+<lark-td>
+飞书 XML 被转义
+</lark-td>
+<lark-td>
+文档块不可用
+</lark-td>
+<lark-td>
+平台组
+</lark-td>
+<lark-td>
+renderer 最后输出，不再交给通用 formatter
+</lark-td>
+</lark-tr>
+<lark-tr>
+<lark-td>
+URL 被插入空格
+</lark-td>
+<lark-td>
+链接损坏
+</lark-td>
+<lark-td>
+工具组
+</lark-td>
+<lark-td>
+AST 层跳过 link 和 inlineCode
+</lark-td>
+</lark-tr>
 </lark-table>
 
 ## 系统架构图

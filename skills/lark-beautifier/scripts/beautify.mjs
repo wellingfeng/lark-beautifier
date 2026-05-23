@@ -109,6 +109,18 @@ function parseArgs(args) {
       options.check = true;
     } else if (arg === "--to-lark-cli") {
       options.toLarkCli = true;
+    } else if (arg === "--theme") {
+      options.theme = args[++index];
+      console.error("Note: --theme is ignored in standalone mode; install the TypeScript CLI to apply themes.");
+    } else if (arg === "--components") {
+      options.components = args[++index];
+      console.error("Note: --components is ignored in standalone mode; install the TypeScript CLI for component injection.");
+    } else if (arg === "--visual-density") {
+      options.visualDensity = args[++index];
+      console.error("Note: --visual-density is ignored in standalone mode; install the TypeScript CLI to control component density.");
+    } else if (arg === "--analyze") {
+      options.analyze = true;
+      console.error("Note: --analyze is ignored in standalone mode; install the TypeScript CLI to emit SignalReport JSON.");
     } else if (arg === "--diff") {
       console.error("Standalone skill mode does not support --diff. Install the full npm package for diff output.");
       process.exit(2);
@@ -333,15 +345,15 @@ function maybeTable(block, previousBlock, options) {
   const widths = header.map((cell) => Math.max(120, Math.min(280, cell.length * 18 + 80))).join(",");
 
   return [
-    `<lark-table column-widths="${widths}">`,
-    "<thead>",
-    "<tr>",
-    ...header.map((cell) => `<th>${escapeHtml(cell)}</th>`),
-    "</tr>",
-    "</thead>",
-    "<tbody>",
-    ...body.flatMap((row) => ["<tr>", ...row.map((cell) => `<td>${escapeHtml(cell)}</td>`), "</tr>"]),
-    "</tbody>",
+    `<lark-table column-widths="${widths}" header-row="true">`,
+    "<lark-tr>",
+    ...header.map((cell) => `<lark-td>\n**${escapeHtml(cell)}**\n</lark-td>`),
+    "</lark-tr>",
+    ...body.flatMap((row) => [
+      "<lark-tr>",
+      ...row.map((cell) => `<lark-td>\n${escapeHtml(cell)}\n</lark-td>`),
+      "</lark-tr>"
+    ]),
     "</lark-table>"
   ].join("\n");
 }

@@ -400,10 +400,15 @@ function parseKnownHtmlBlock(raw) {
     };
   }
   if (/^<lark-table\b/i.test(raw)) {
-    const headers = [...raw.matchAll(/<th>([\s\S]*?)<\/th>/gi)].map((match) => decodeHtml(match[1]));
-    const rows = [...raw.matchAll(/<tr>([\s\S]*?)<\/tr>/gi)]
-      .slice(headers.length ? 1 : 0)
-      .map((row) => [...row[1].matchAll(/<td>([\s\S]*?)<\/td>/gi)].map((cell) => decodeHtml(cell[1])));
+    const larkRows = [...raw.matchAll(/<lark-tr>([\s\S]*?)<\/lark-tr>/gi)]
+      .map((row) => [...row[1].matchAll(/<lark-td>([\s\S]*?)<\/lark-td>/gi)]
+        .map((cell) => decodeHtml(cell[1]).replace(/^\s*\*\*([\s\S]*?)\*\*\s*$/, "$1").trim()));
+    const htmlHeaders = [...raw.matchAll(/<th>([\s\S]*?)<\/th>/gi)].map((match) => decodeHtml(match[1]).trim());
+    const htmlRows = [...raw.matchAll(/<tr>([\s\S]*?)<\/tr>/gi)]
+      .slice(htmlHeaders.length ? 1 : 0)
+      .map((row) => [...row[1].matchAll(/<td>([\s\S]*?)<\/td>/gi)].map((cell) => decodeHtml(cell[1]).trim()));
+    const headers = larkRows.length ? larkRows[0] : htmlHeaders;
+    const rows = larkRows.length ? larkRows.slice(1) : htmlRows;
     if (headers.length) {
       return {
         kind: "larkTable",

@@ -10,3 +10,4 @@ coverage/
 release/
 .DS_Store
 Thumbs.db
+.gstack/

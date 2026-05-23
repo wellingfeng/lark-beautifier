@@ -1,4 +1,4 @@
 interface:
   display_name: "Lark Beautifier"
-  short_description: "Beautify Feishu/Lark docs with safe write-back"
-  default_prompt: "Use $lark-beautifier to beautify this Lark document or Markdown with safe visual enhancement suggestions."
+  short_description: "Create visual-first Feishu/Lark docs"
+  default_prompt: "Use $lark-beautifier to turn this Markdown or Lark document into a visual-first Feishu doc with diagrams, timelines, images, cards, and safe write-back."

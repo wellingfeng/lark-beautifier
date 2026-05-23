@@ -3,8 +3,19 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 import { createPatch } from "diff";
-import { beautifyMarkdown } from "./index.js";
-import type { BeautifierConfig, BeautifierMode, EnhancementMode, TableMode, ToggleMode, WhiteboardMode } from "./config.js";
+import { beautifyMarkdownWithReport } from "./index.js";
+import type {
+  BeautifierConfig,
+  BeautifierMode,
+  ComponentsOption,
+  EnhancementMode,
+  TableMode,
+  ThemeOption,
+  ToggleMode,
+  VisualDensity,
+  WhiteboardMode
+} from "./config.js";
+import type { ThemeName } from "./themes.js";
 
 const program = new Command();
 
@@ -21,6 +32,14 @@ program
   .option("--tables <mode>", "markdown, smart, or lark", parseTableMode)
   .option("--whiteboards <mode>", "off, suggest, or insert-blank", parseWhiteboardMode)
   .option("--enhancements <mode>", "off, suggest, or draft", parseEnhancementMode)
+  .option("--theme <name>", "auto, technical-blue, warm-product, clean-minimal, or vivid-marketing", parseTheme)
+  .option("--visual-density <density>", "minimal, balanced, or rich", parseVisualDensity)
+  .option(
+    "--components <value>",
+    "off, auto, or comma-separated list of component names",
+    parseComponents
+  )
+  .option("--analyze", "write SignalReport JSON to stderr")
   .option("--conservative", "prefer high-confidence conversions only")
   .option("--check", "check whether the file would change without writing")
   .option("--diff", "print a unified diff")
@@ -35,7 +54,11 @@ program
 
     const inputPath = resolve(input);
     const source = await readFile(inputPath, "utf8");
-    const output = beautifyMarkdown(source, collectConfigOptions(options));
+    const { output, report } = beautifyMarkdownWithReport(source, collectConfigOptions(options));
+
+    if (options.analyze) {
+      process.stderr.write(`${JSON.stringify(report, null, 2)}\n`);
+    }
 
     const changed = normalizeNewlines(source).trimEnd() !== output.trimEnd();
 
@@ -48,7 +71,9 @@ program
         if (!options.diff) {
           process.stderr.write(`${inputPath} would be changed by lark-beautifier.\n`);
         }
-        process.exitCode = 1;
+        if (!options.analyze) {
+          process.exitCode = 1;
+        }
       }
       return;
     }
@@ -64,12 +89,6 @@ program
 
     process.stdout.write(output);
   });
-
-program.parseAsync().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`lark-beautifier: ${message}\n`);
-  process.exitCode = 1;
-});
 
 function parseToggleMode(value: string): ToggleMode {
   if (value === "off" || value === "auto" || value === "conservative") {
@@ -106,6 +125,57 @@ function parseEnhancementMode(value: string): EnhancementMode {
   throw new InvalidArgumentError("Expected off, suggest, or draft.");
 }
 
+const THEME_NAMES: readonly ThemeName[] = [
+  "technical-blue",
+  "warm-product",
+  "clean-minimal",
+  "vivid-marketing"
+];
+
+function parseTheme(value: string): ThemeOption {
+  if (value === "auto") return "auto";
+  if ((THEME_NAMES as readonly string[]).includes(value)) return value as ThemeName;
+  throw new InvalidArgumentError(
+    "Expected auto, technical-blue, warm-product, clean-minimal, or vivid-marketing."
+  );
+}
+
+function parseVisualDensity(value: string): VisualDensity {
+  if (value === "minimal" || value === "balanced" || value === "rich") {
+    return value;
+  }
+  throw new InvalidArgumentError("Expected minimal, balanced, or rich.");
+}
+
+const COMPONENT_NAMES = new Set([
+  "cover-banner",
+  "section-divider",
+  "action-items",
+  "kpi-card-row",
+  "timeline",
+  "before-after",
+  "quote-block"
+]);
+
+function parseComponents(value: string): ComponentsOption {
+  if (value === "off" || value === "auto") return value;
+  const parts = value
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    throw new InvalidArgumentError("Expected off, auto, or a comma-separated component list.");
+  }
+  for (const part of parts) {
+    if (!COMPONENT_NAMES.has(part)) {
+      throw new InvalidArgumentError(
+        `Unknown component "${part}". Expected one of ${[...COMPONENT_NAMES].join(", ")}.`
+      );
+    }
+  }
+  return parts;
+}
+
 function normalizeNewlines(value: string): string {
   return value.replace(/\r\n/g, "\n");
 }
@@ -120,6 +190,9 @@ function collectConfigOptions(options: Record<string, unknown>): Partial<Beautif
     ...(options.tables ? { tables: options.tables as TableMode } : {}),
     ...(options.whiteboards ? { whiteboards: options.whiteboards as WhiteboardMode } : {}),
     ...(options.enhancements ? { enhancements: options.enhancements as EnhancementMode } : {}),
+    ...(options.theme ? { theme: options.theme as ThemeOption } : {}),
+    ...(options.visualDensity ? { visualDensity: options.visualDensity as VisualDensity } : {}),
+    ...(options.components !== undefined ? { components: options.components as ComponentsOption } : {}),
     ...(options.conservative ? { conservative: true } : {})
   };
 }
@@ -127,3 +200,9 @@ function collectConfigOptions(options: Record<string, unknown>): Partial<Beautif
 function escapeForDoubleQuotes(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
+
+program.parseAsync().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`lark-beautifier: ${message}\n`);
+  process.exitCode = 1;
+});

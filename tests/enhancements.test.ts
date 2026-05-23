@@ -36,4 +36,19 @@ describe("enhancement suggestions", () => {
     expect(output).toContain("视觉增强建议：封面/配图");
     expect(output).toContain("baoyu-xhs-images prompt");
   });
+
+  it("uses analyzer signals to suggest timeline treatment beyond heading keywords", () => {
+    const output = beautifyMarkdown([
+      "# 发布节奏",
+      "",
+      "- Phase 1：完成内部灰度",
+      "- Phase 2：扩大到核心项目",
+      "- Phase 3：发布稳定版"
+    ].join("\n"), {
+      enhancements: "suggest"
+    });
+
+    expect(output).toContain("视觉增强建议：时间线");
+    expect(output).toContain("检测到 3 个按时间或阶段排列的事项");
+  });
 });

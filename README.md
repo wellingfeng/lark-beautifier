@@ -2,68 +2,19 @@
 
 [中文说明](README.zh-CN.md)
 
-Convert ordinary Markdown into Lark-friendly Markdown for Feishu/Lark docs, and guide safe write-back to real Feishu documents through `@larksuiteoapi/lark-mcp` OAuth + Feishu OpenAPI. The tool preserves source meaning while improving document rhythm with Chinese typography, callouts, grids, smart tables, whiteboard hints, and visual suggestions for charts, diagrams, images, and Xiaohongshu-style cards.
+Lark Beautifier is a Node.js / TypeScript CLI and installable agent skill for turning plain Markdown into Feishu/Lark-ready documents. It keeps the source meaning intact while adding safer structure, stronger visual rhythm, Lark-flavored Markdown components, and optional Feishu write-back helpers.
 
-## What It Does
+The current v3 direction is visual-first: the formatter still handles typography, callouts, grids, and smart tables, but the skill can also orchestrate cover blocks, section dividers, timelines, action items, Feishu whiteboards, flowcharts, diagrams, generated images, infographics, and Xiaohongshu-style demo cards when the user asks for a richer document.
 
-- Cleans Chinese typography without touching code, links, image URLs, or raw Lark blocks.
-- Converts high-confidence cues into callouts.
-- Turns comparison sections into grids.
-- Converts complex tables into Lark-friendly table markup.
-- Suggests diagrams, charts, whiteboards, images, and Xiaohongshu cards with confirmation gates.
-- Provides a dry-run-first Feishu OpenAPI write-back helper for real docs.
+## Features
 
-## Install As A Codex Skill
-
-Copy the skill folder into your Codex skills directory:
-
-```bash
-cp -R skills/lark-beautifier ~/.codex/skills/
-```
-
-On Windows PowerShell:
-
-```powershell
-Copy-Item -Recurse skills\lark-beautifier $env:USERPROFILE\.codex\skills\
-```
-
-Then ask Codex to use `$lark-beautifier`.
-
-You can also install directly from GitHub after cloning:
-
-```bash
-git clone https://github.com/wellingfeng/lark-beautifier.git
-cp -R lark-beautifier/skills/lark-beautifier ~/.codex/skills/
-```
-
-## Install As A Claude Code Skill
-
-Claude Code skills use the same `SKILL.md` entrypoint. This repository includes a Claude Code project-skill copy at:
-
-```text
-.claude/skills/lark-beautifier
-```
-
-For a project-local Claude Code install, copy it into your project:
-
-```bash
-mkdir -p .claude/skills
-cp -R lark-beautifier/.claude/skills/lark-beautifier .claude/skills/
-```
-
-For a personal Claude Code install:
-
-```bash
-mkdir -p ~/.claude/skills
-cp -R lark-beautifier/.claude/skills/lark-beautifier ~/.claude/skills/
-```
-
-On Windows PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force .claude\skills
-Copy-Item -Recurse lark-beautifier\.claude\skills\lark-beautifier .claude\skills\
-```
+- Cleans Chinese typography without touching fenced code, inline code, links, image URLs, raw HTML, or existing Lark XML blocks.
+- Converts high-confidence cues into Feishu-style callouts and comparison grids.
+- Renders complex Markdown tables as smarter Lark-friendly tables with semantic column widths.
+- Separates risk mode from visual style: `safe | structured | bold` controls safety, while `theme` and `visualDensity` control presentation.
+- Adds reusable components such as `cover-banner`, `section-divider`, `timeline`, `before-after`, `quote-block`, `kpi-card-row`, and `action-items`.
+- Produces visual suggestions or drafts for whiteboards, Mermaid diagrams, image prompts, charts, and social cards.
+- Includes a dry-run-first Feishu write-back helper for real docs through Feishu OpenAPI and `@larksuiteoapi/lark-mcp` OAuth.
 
 ## Install
 
@@ -72,32 +23,27 @@ npm install
 npm run build
 ```
 
-## CLI
+Run from source:
 
 ```bash
 npm run dev -- examples/raw.md -o examples/beautified.md --mode structured
 ```
 
-After building:
+Run after build:
 
 ```bash
-node dist/cli.js input.md --output output.md
+node dist/cli.js input.md --output output.md --mode structured
 ```
 
-Modes:
-
-| Mode | Purpose |
-|---|---|
-| `safe` | Conservative formatting for high-stakes documents |
-| `structured` | Default Feishu readability improvement |
-| `bold` | User-approved draft with visual artifact suggestions |
-
-Useful options:
+## CLI Usage
 
 ```bash
 node dist/cli.js input.md \
   --output output.md \
   --mode structured \
+  --theme technical-blue \
+  --visual-density rich \
+  --components auto \
   --callouts auto \
   --grids auto \
   --tables smart \
@@ -105,23 +51,93 @@ node dist/cli.js input.md \
   --enhancements suggest
 ```
 
-Use `--check` to fail when a file would change, `--diff` to print a unified diff, and `--to-lark-cli` to print a legacy `lark-cli docs +create --markdown` command for the generated output file.
+Risk modes:
 
-`--enhancements suggest` only adds recommendation callouts. Use `--enhancements draft` to include Mermaid or prompt drafts for review; get user confirmation before inserting real images, charts, whiteboards, or major restructures into a live Lark doc.
+| Mode | Purpose |
+| --- | --- |
+| `safe` | Conservative formatting for high-stakes documents. |
+| `structured` | Default mode for PRDs, meeting notes, technical plans, reports, retros, and project docs. |
+| `bold` | Stronger visual draft mode for user-approved rich documents. |
+
+Visual themes:
+
+| Theme | Best For |
+| --- | --- |
+| `technical-blue` | Engineering docs, architecture notes, API docs, release notes. |
+| `warm-product` | PRDs, product plans, user stories, launch docs. |
+| `clean-minimal` | Executive briefs, external docs, compliance-sensitive writing. |
+| `vivid-marketing` | Marketing drafts, social posts, event pages, demo scripts. |
+
+Component controls:
+
+```bash
+# Let the analyzer choose high-confidence components.
+node dist/cli.js input.md -o output.md --components auto --theme auto
+
+# Opt into specific components only.
+node dist/cli.js input.md -o output.md --components cover-banner,section-divider,action-items
+
+# Inspect document signals as JSON.
+node dist/cli.js input.md --analyze --check 2> analysis.json
+```
+
+Useful validation flags:
+
+- `--check` exits non-zero if the file would change.
+- `--diff` prints a unified diff.
+- `--conservative` downgrades risky transformations.
+- `--to-lark-cli` prints a legacy `lark-cli docs +create` command for the generated output file.
+
+## Install As A Skill
+
+The canonical skill package lives at:
+
+```text
+skills/lark-beautifier
+```
+
+Install it for Codex:
+
+```bash
+git clone https://github.com/wellingfeng/lark-beautifier.git
+cp -R lark-beautifier/skills/lark-beautifier ~/.codex/skills/
+```
+
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/wellingfeng/lark-beautifier.git
+Copy-Item -Recurse lark-beautifier\skills\lark-beautifier $env:USERPROFILE\.codex\skills\
+```
+
+Then ask Codex to use `$lark-beautifier`.
+
+The Claude Code mirror is kept in lockstep at:
+
+```text
+.claude/skills/lark-beautifier
+```
+
+Project-local Claude Code install:
+
+```bash
+mkdir -p .claude/skills
+cp -R lark-beautifier/.claude/skills/lark-beautifier .claude/skills/
+```
 
 ## Feishu Write-Back
 
-The skill includes a dry-run-first write-back helper. It can beautify a local Markdown file:
+The write-back helper is dry-run-first. It can produce a plan from a local Markdown file without modifying the target document:
 
 ```bash
 node skills/lark-beautifier/scripts/lark-doc-writeback.mjs \
   --doc "https://example.feishu.cn/docx/..." \
   --input examples/beautified.md \
   --mode structured \
-  --plan-output plan.json
+  --plan-output tmp/writeback-plan.json
 ```
 
-After reviewing the plan and authorizing with `lark-mcp`, add `--apply`:
+After reviewing the plan, apply it explicitly:
 
 ```bash
 LARK_MCP_APP_ID=<app_id> node skills/lark-beautifier/scripts/lark-doc-writeback.mjs \
@@ -131,48 +147,15 @@ LARK_MCP_APP_ID=<app_id> node skills/lark-beautifier/scripts/lark-doc-writeback.
   --apply
 ```
 
-The helper never needs app secrets on the command line when a local `lark-mcp` OAuth token already exists.
+For `--mode bold`, live write-back also requires `--confirm-bold`.
 
-It can also read an existing Feishu doc and generate a diff-style plan before writing:
-
-```bash
-LARK_MCP_APP_ID=<app_id> node skills/lark-beautifier/scripts/lark-doc-writeback.mjs \
-  --doc "https://example.feishu.cn/docx/..." \
-  --mode structured \
-  --plan-output plan.json
-```
-
-For `--mode bold`, live write-back requires `--confirm-bold` after the user approves the plan.
-
-For first-time OAuth login, use:
+For first-time OAuth login, prefer the Lark MCP authorization-code flow:
 
 ```bash
 npx -y @larksuiteoapi/lark-mcp login -a <app_id> -s <app_secret> -p 8765 --host 127.0.0.1
 ```
 
-Do not commit app secrets, user access tokens, refresh tokens, or local OAuth storage.
-
-## Skill Layout
-
-The installable Codex skill lives at:
-
-```text
-skills/lark-beautifier
-```
-
-The Claude Code skill lives at:
-
-```text
-.claude/skills/lark-beautifier
-```
-
-Install it by copying that folder into your Codex skills directory, for example:
-
-```bash
-cp -R skills/lark-beautifier ~/.codex/skills/
-```
-
-The skill delegates deterministic formatting to the repository CLI when available, falls back to its bundled script when installed standalone, and prefers `@larksuiteoapi/lark-mcp` OAuth authorization-code login plus Feishu OpenAPI when creating or updating real Lark docs.
+Do not commit app secrets, access tokens, refresh tokens, or local OAuth storage.
 
 ## Development
 
@@ -184,4 +167,11 @@ npm run lint:md
 npm run check:skills
 node skills/lark-beautifier/scripts/self-check.mjs
 npm run package:skill
+```
+
+The canonical skill source is `skills/lark-beautifier`. After changing it, run:
+
+```bash
+npm run sync:skills
+npm run check:skills
 ```

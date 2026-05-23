@@ -1,8 +1,10 @@
 import type { Root } from "mdast";
+import type { SignalReport } from "./analyze/signals.js";
 
 export type BeautifierRoot = Root & {
   larkBeautifier?: {
     frontmatter?: string;
+    analysis?: SignalReport;
   };
 };
 
@@ -23,6 +25,7 @@ export interface LarkCalloutNode {
 
 export interface LarkGridNode {
   type: "larkGrid";
+  cols?: number;
   columns: Array<{
     title: string;
     children: Root["children"];
@@ -31,8 +34,8 @@ export interface LarkGridNode {
 
 export interface LarkTableNode {
   type: "larkTable";
-  headers: string[];
-  rows: string[][];
+  headers: Root["children"][number][][];
+  rows: Root["children"][number][][][];
   columnWidths?: number[];
 }
 

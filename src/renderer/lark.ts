@@ -45,10 +45,13 @@ function renderCallout(node: LarkCalloutNode): string {
 }
 
 function renderGrid(node: LarkGridNode): string {
-  const lines = [`<grid cols="${node.columns.length}">`];
+  const lines = [`<grid cols="${node.cols ?? node.columns.length}">`];
   for (const column of node.columns) {
-    lines.push("<column>", "", `**${column.title}**`, "");
-    const body = renderMarkdownBlocks(column.children as Root["children"]).trim();
+    lines.push("<column>", "");
+    if (column.title) {
+      lines.push(`**${column.title}**`, "");
+    }
+    const body = renderLarkMarkdownBlocks(column.children as Array<RootContent | LarkNode>).trim();
     if (body) {
       lines.push(body, "");
     }
@@ -60,20 +63,26 @@ function renderGrid(node: LarkGridNode): string {
 
 function renderLarkTable(node: LarkTableNode): string {
   const widths = node.columnWidths?.length ? ` column-widths="${node.columnWidths.join(",")}"` : "";
-  const lines = [`<lark-table${widths}>`, "<thead>", "<tr>"];
+  const lines = [`<lark-table${widths} header-row="true">`, "<lark-tr>"];
   for (const header of node.headers) {
-    lines.push(`<th>${escapeHtml(header)}</th>`);
+    lines.push(renderTableCell(header, true));
   }
-  lines.push("</tr>", "</thead>", "<tbody>");
+  lines.push("</lark-tr>");
   for (const row of node.rows) {
-    lines.push("<tr>");
+    lines.push("<lark-tr>");
     for (const cell of row) {
-      lines.push(`<td>${escapeHtml(cell)}</td>`);
+      lines.push(renderTableCell(cell));
     }
-    lines.push("</tr>");
+    lines.push("</lark-tr>");
   }
-  lines.push("</tbody>", "</lark-table>");
+  lines.push("</lark-table>");
   return lines.join("\n");
+}
+
+function renderTableCell(children: Root["children"], header = false): string {
+  const body = renderMarkdownBlocks(children).trim();
+  const content = header && body ? `**${body.replace(/^\*\*|\*\*$/g, "")}**` : body;
+  return [`<lark-td>`, content, "</lark-td>"].join("\n");
 }
 
 function renderWhiteboard(node: LarkWhiteboardNode): string {
