@@ -3,6 +3,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Before making changes, also read and follow `RTK.md` for the project's general AI coding rules.
+
 ## Project
 
 `lark-beautifier` is a Node/TypeScript CLI + library that converts ordinary Markdown into Lark/Feishu-friendly Markdown (Chinese typography, callouts, comparison grids, smart tables, whiteboard/visual hints) and ships a dry-run-first OpenAPI write-back helper that pushes the result back into real Feishu docs via `@larksuiteoapi/lark-mcp` OAuth. The same logic is also distributed as a Codex/Claude Code skill (see "Skills" below).

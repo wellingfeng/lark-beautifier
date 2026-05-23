@@ -2,6 +2,8 @@
 
 Guidance for AI coding agents (Codex, Claude Code, etc.) working in this repository. For full project architecture and commands, read `CLAUDE.md` — this file only adds the file-layout discipline that every agent must follow.
 
+Before making changes, also read and follow `RTK.md` for the project's general AI coding rules.
+
 ## File layout conventions
 
 Keep the repo root limited to committed project files (source, configs, packaging, top-level docs like `README*.md` / `LICENSE` / `CONTRIBUTING.md` / `CLAUDE.md` / `AGENTS.md` / `DEVELOPMENT_PLAN.md`). For everything else:

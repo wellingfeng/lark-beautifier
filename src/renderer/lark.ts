@@ -91,7 +91,7 @@ function renderWhiteboard(node: LarkWhiteboardNode): string {
 }
 
 function renderEnhancement(node: LarkEnhancementNode): string {
-  const lines = [
+  const calloutLines = [
     '<callout emoji="🎨" background-color="light-purple" border-color="purple">',
     `**${node.title}**`,
     "",
@@ -99,13 +99,13 @@ function renderEnhancement(node: LarkEnhancementNode): string {
     "",
     ...node.actions.map((action) => `- ${action}`)
   ];
+  calloutLines.push("</callout>");
 
   if (node.artifact) {
-    lines.push("", renderArtifact(node.artifact));
+    return [calloutLines.join("\n"), renderArtifact(node.artifact)].join("\n\n");
   }
 
-  lines.push("</callout>");
-  return lines.join("\n");
+  return calloutLines.join("\n");
 }
 
 function renderArtifact(artifact: NonNullable<LarkEnhancementNode["artifact"]>): string {

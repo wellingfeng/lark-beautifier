@@ -141,6 +141,33 @@ flowchart / flywheel whiteboard（工作方式或生态闭环）
 | 任何 H2 + 长文档（≥5 章） | section-divider |
 | 「小红书」「种草」「教程」「演示图」「传播」 | Xiaohongshu-style card |
 
+## 章节节奏：大色块，小数据流
+
+借鉴图文长文的阅读节奏，但落地时保持飞书可维护：
+
+- **大段落 / H2 主章节**：长文档里用 `section-divider` + 主题色导读 callout。它承担“换章节”的停顿点，颜色可以明显一点，但每个 H2 只放一个。
+- **小段落 / H3-H4 机制说明**：优先使用 `输入 → 处理 → 输出`、`资源准备 → 构建 → 渲染`、阶段短链、细分割线 `---`、小表格或普通列表。不要把每个小段都包成 callout。
+- **流程密集内容**：如果箭头链路超过 5 个节点，升级为 flowchart / whiteboard；如果只有 2-4 个节点，用一行数据流即可。
+- **代码解释**：代码块保持原样，代码前后用短句或表格解释“这段代码做什么 / 初学者容易错在哪里”，不要把代码放进 callout。
+
+推荐写法：
+
+```markdown
+---
+
+## 🧱 二、Nanite 的数据结构
+
+<callout emoji="📌" background-color="light-blue" border-color="blue">
+**本节导读**
+
+Nanite 不是“自动 LOD 按钮”，而是一套把超高面数网格切成层级 Cluster 并按屏幕误差流式选择的几何系统。
+</callout>
+
+### 数据流
+
+高模 Mesh → Cluster 切分 → 层级树构建 → 磁盘/显存流送 → GPU 可见性裁剪 → 光栅化
+```
+
 ## 重点标注路由
 
 所有主题都先读 `copy-editing-and-emphasis.md`，再按主题上色：

@@ -6,6 +6,22 @@ Lark Beautifier 是一个 Node.js / TypeScript CLI，也是一套可安装的 Ag
 
 当前 v3 方向是“视觉优先”：工具仍然保留中文排版、callout、grid、智能表格等安全格式化能力，但 Skill 在用户要求“美化 / 强视觉版 / 图文并茂 / 新建视觉文档”时，会主动编排封面、章节分隔、时间线、行动项、飞书画板、流程图、架构图、配图、信息图和小红书演示卡片。
 
+## 前后对比示例
+
+下面三组示例是更接近真实技术文章的 UE5 主题文档，内容包含正文、表格、代码 / CVar、Mermaid 流程图、时间线和图片块。文章事实边界参考 Epic 官方 UE5 文档：Nanite、Virtual Shadow Maps 和 Lumen。
+
+### Nanite 技术细节
+
+![UE5 Nanite 原始版与 lark-beautifier 美化版对比](doc/assets/readme/ue5-nanite-comparison.png)
+
+### Virtual Shadow Maps 技术细节
+
+![UE5 VSM 原始版与 lark-beautifier 美化版对比](doc/assets/readme/ue5-vsm-comparison.png)
+
+### Lumen 技术细节
+
+![UE5 Lumen 原始版与 lark-beautifier 美化版对比](doc/assets/readme/ue5-lumen-comparison.png)
+
 ## 能力
 
 - 清理中文排版，不破坏代码块、行内代码、链接、图片 URL、HTML 和已有 Lark XML。
@@ -34,6 +50,41 @@ npm run dev -- examples/raw.md -o examples/beautified.md --mode structured
 
 ```bash
 node dist/cli.js input.md --output output.md --mode structured
+```
+
+## 推荐用户流程
+
+1. 先准备 Markdown 源文档。技术文章可以保留代码块、Mermaid 图、表格、时间线和图片引用。
+2. 本地运行 `lark-beautifier`，先把输出写到 `tmp/` 或其他可 review 的路径。
+3. 检查 diff 或输出 Markdown。高管、法务、财务、合规文档用 `safe`；普通团队文档用 `structured`；只有用户明确确认强视觉草稿时才用 `bold`。
+4. 用美化后的 Markdown 新建飞书文档，或对已有飞书文档先跑 dry-run 写回计划。
+5. 只有确认计划后才写入真实文档。需要保留原内容时使用 `--append`。
+
+```bash
+# 1. 生成本地美化稿。
+node dist/cli.js input.md \
+  --output tmp/input-beautified.md \
+  --mode structured \
+  --theme auto \
+  --components auto \
+  --visual-density balanced
+
+# 2. 写入前先查看变化。
+node dist/cli.js input.md --mode structured --diff
+
+# 3. 从美化稿新建飞书文档。
+lark-cli docs +create --as bot \
+  --title "Beautified Document" \
+  --markdown "@tmp/input-beautified.md"
+```
+
+如果 Markdown 引用的是本地图片相对路径，飞书在 `docs +create` 时无法直接下载。创建文档后再插入本地媒体：
+
+```bash
+lark-cli docs +media-insert --as bot \
+  --doc "https://www.feishu.cn/docx/..." \
+  --file doc/assets/readme/ue5-lumen-diagram.svg \
+  --caption "Lumen rendering path"
 ```
 
 ## CLI 用法
@@ -113,6 +164,36 @@ Copy-Item -Recurse lark-beautifier\skills\lark-beautifier $env:USERPROFILE\.code
 
 之后让 Codex 使用 `$lark-beautifier` 即可。
 
+## 给 AI Agent 用的教程
+
+使用 Codex 或 Claude Code 时，把输入、风险等级、是否允许生成视觉资产、是否允许写回飞书说清楚。
+
+安全本地美化：
+
+```text
+Use $lark-beautifier to beautify docs/rendering-note.md for Feishu.
+Use structured mode, write the output to tmp/rendering-note-beautified.md,
+and do not update any live Feishu document yet.
+```
+
+强视觉技术文章：
+
+```text
+Use $lark-beautifier to turn this UE5 technical article into a rich Feishu
+document. Keep the technical meaning intact. Use cover/KPI cards, native
+tables, Mermaid flowcharts, a timeline, code blocks, and image placeholders.
+Create a dry-run write-back plan only.
+```
+
+带 review 的真实写回：
+
+```text
+Use $lark-beautifier on this Feishu doc URL. First produce a dry-run plan
+under tmp/. Show me the likely changes, table count, callout count, and
+whether the default strategy would replace or append. Do not apply until I
+confirm.
+```
+
 Claude Code 镜像目录保持同步在：
 
 ```text
@@ -157,6 +238,53 @@ npx -y @larksuiteoapi/lark-mcp login -a <app_id> -s <app_secret> -p 8765 --host 
 ```
 
 不要提交 app secret、access token、refresh token 或本地 OAuth 存储文件。
+
+## 复现 README 对比图
+
+README 中的三张长图按下面流程生成：
+
+1. 在 `tmp/readme-demo/` 下生成 UE5 技术文章原始 Markdown。
+2. 用 `lark-cli docs +create --as bot --markdown @tmp/readme-demo/<article>-raw.md` 创建原始飞书文档。
+3. 用 `lark-beautifier` 美化 Markdown。
+4. 用 `lark-cli docs +create --as bot --markdown @tmp/readme-demo/<article>-beautified.md` 创建美化版飞书文档。
+5. 用 `$aligned-screenshot-compare` 生成段落对齐长图。
+
+命令示例：
+
+```bash
+node tools/generate-readme-demo.mjs
+
+node skills/lark-beautifier/scripts/beautify.mjs \
+  tmp/readme-demo/ue5-nanite-raw.md \
+  --output tmp/readme-demo/ue5-nanite-beautified.md \
+  --mode bold \
+  --theme technical-blue \
+  --components auto \
+  --visual-density rich \
+  --enhancements draft
+
+lark-cli docs +create --as bot \
+  --title "UE5 Nanite 技术细节（原始版）" \
+  --markdown "@tmp/readme-demo/ue5-nanite-raw.md"
+
+lark-cli docs +create --as bot \
+  --title "UE5 Nanite 技术细节（lark-beautifier 美化版）" \
+  --markdown "@tmp/readme-demo/ue5-nanite-beautified.md"
+
+node skills/aligned-screenshot-compare/scripts/align-compare.mjs \
+  --left tmp/readme-demo/ue5-nanite-raw.md \
+  --right tmp/readme-demo/ue5-nanite-beautified.md \
+  --left-title "原始飞书文档" \
+  --right-title "lark-beautifier 美化版" \
+  --out-html tmp/readme-demo/ue5-nanite-compare.html \
+  --out-png doc/assets/readme/ue5-nanite-comparison.png
+```
+
+把 `ue5-nanite` 替换为 `ue5-vsm`、`ue5-lumen` 即可复现另外两张。官方参考：
+
+- Epic Games：[Nanite Virtualized Geometry in Unreal Engine](https://dev.epicgames.com/documentation/unreal-engine/nanite-virtualized-geometry-in-unreal-engine)。
+- Epic Games：[Virtual Shadow Maps in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/virtual-shadow-maps-in-unreal-engine)。
+- Epic Games：[Lumen Global Illumination and Reflections](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-global-illumination-and-reflections-in-unreal-engine) / [Lumen Technical Details](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-technical-details-in-unreal-engine)。
 
 ## 开发与校验
 

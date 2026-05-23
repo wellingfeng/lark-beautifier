@@ -13,13 +13,13 @@ const command = process.platform === "win32"
   ? ["powershell.exe", [
       "-NoProfile",
       "-Command",
-      "Compress-Archive -Path 'skills/lark-beautifier','.claude/skills/lark-beautifier','README.md','README.zh-CN.md','LICENSE' -DestinationPath 'release/lark-beautifier-skill.zip' -Force"
+      "Compress-Archive -Path 'skills','.claude/skills','README.md','README.zh-CN.md','LICENSE' -DestinationPath 'release/lark-beautifier-skill.zip' -Force"
     ]]
   : ["zip", [
       "-r",
       zipPath,
-      "skills/lark-beautifier",
-      ".claude/skills/lark-beautifier",
+      "skills",
+      ".claude/skills",
       "README.md",
       "README.zh-CN.md",
       "LICENSE"

@@ -56,9 +56,12 @@ When the user asks for "美化", "视觉优化", "更高级", "强视觉版", or
    - key term / product / number: bold + theme color;
    - risk / constraint / action: color + underline or callout;
    - section thesis: heading color, callout title, or component card.
-5. Use suggestion callouts only when the user has not authorized visual generation, the target doc is high-stakes, or required data is missing.
-6. If the user explicitly says "画流程图", "加图片", "做时间线", "做小红书图", "强视觉版", or asks for a new visual document, execute the relevant handoff without asking again for that category. Ask only for missing brand style, missing data, overwrite risk, or irreversible write-back decisions.
-7. For a newly created Lark doc, a blank `<whiteboard type="blank"></whiteboard>` is incomplete. Immediately fill each returned board token through `lark-whiteboard` / `lark-whiteboard-cli`.
+5. Establish reading rhythm:
+   - large H2 sections in long documents: use a clear theme-colored section divider / guide callout so the reader feels a new block;
+   - short H3/H4 paragraphs or mechanism notes: prefer `A → B → C`, `阶段 1 → 阶段 2`, thin `---` separators, tables, or compact lists instead of wrapping every paragraph in another callout.
+6. Use suggestion callouts only when the user has not authorized visual generation, the target doc is high-stakes, or required data is missing.
+7. If the user explicitly says "画流程图", "加图片", "做时间线", "做小红书图", "强视觉版", or asks for a new visual document, execute the relevant handoff without asking again for that category. Ask only for missing brand style, missing data, overwrite risk, or irreversible write-back decisions.
+8. For a newly created Lark doc, a blank `<whiteboard type="blank"></whiteboard>` is incomplete. Immediately fill each returned board token through `lark-whiteboard` / `lark-whiteboard-cli`.
 
 ## Markdown Beautification
 
@@ -108,7 +111,7 @@ When the user asks "make this more visual" / "美化" / "优化下排版", defau
 2. Insert a **kpi-card-row** if the doc has 3-4 parallel numbers/dates/versions.
 3. Add a real **timeline / milestone visual** when the content has chronology, release history, or roadmap signals.
 4. Add a real **flowchart / architecture whiteboard** when the content has process, dependency, or system structure signals.
-5. Add **section-divider** before each H2 (emoji + 1-line chapter summary).
+5. Add **section-divider** before each H2 in long documents. In `rich` density, make each major section stop point visually obvious with a theme-colored "本节导读" block; in shorter subsections, use data-flow arrows, dividers, and compact tables to keep rhythm light.
 6. Use **before-after** for any "old vs new" / "before vs after" comparison.
 7. Convert a single high-signal sentence into a **quote-block** only from source text.
 8. Convert end-of-doc checklist into **action-items** grid.

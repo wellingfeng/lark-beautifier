@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aligned Screenshot Compare"
+  short_description: "Paragraph-aligned visual comparisons"
+  default_prompt: "Use $aligned-screenshot-compare to compare two versions of a document with matching paragraphs aligned before generating side-by-side screenshots."

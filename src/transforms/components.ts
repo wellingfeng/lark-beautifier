@@ -44,7 +44,7 @@ export function applyComponents(tree: BeautifierRoot, config: BeautifierConfig):
           const decorated = decorateHeading(original, emoji);
           inserts.push(decorated);
           if (config.visualDensity === "rich" && divider.oneLineSummary) {
-            inserts.push(makeSummaryParagraph(divider.oneLineSummary));
+            inserts.push(makeSectionSummary(theme.name, divider.oneLineSummary) as unknown as RootContent);
           }
           replaceRangeAtStart.set(divider.headingIndex, { length: 1, nodes: inserts });
           continue;
@@ -53,7 +53,7 @@ export function applyComponents(tree: BeautifierRoot, config: BeautifierConfig):
       prependAtIndex.set(divider.headingIndex, inserts);
       if (config.visualDensity === "rich" && divider.oneLineSummary) {
         const existing = prependAtIndex.get(divider.headingIndex) ?? [];
-        existing.push(makeSummaryParagraph(divider.oneLineSummary));
+        existing.push(makeSectionSummary(theme.name, divider.oneLineSummary) as unknown as RootContent);
         prependAtIndex.set(divider.headingIndex, existing);
       }
     }
@@ -209,6 +209,26 @@ function makeSummaryParagraph(text: string): Paragraph {
   return {
     type: "paragraph",
     children: [{ type: "emphasis", children: [{ type: "text", value: text }] }]
+  };
+}
+
+function makeSectionSummary(themeName: ThemeName, text: string): LarkCalloutNode | Paragraph {
+  if (themeName === "clean-minimal") {
+    return makeSummaryParagraph(text);
+  }
+  const style = themes[themeName].callout.decision;
+  return {
+    type: "larkCallout",
+    emoji: style.emoji,
+    backgroundColor: style.backgroundColor,
+    borderColor: style.borderColor,
+    children: [
+      titleHeading("本节导读"),
+      {
+        type: "paragraph",
+        children: [{ type: "text", value: text }]
+      }
+    ]
   };
 }
 

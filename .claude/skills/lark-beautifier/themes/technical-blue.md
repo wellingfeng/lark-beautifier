@@ -49,11 +49,18 @@ mood: calm, precise, trustworthy
 
 1. **cover-banner**（必选）：开篇必须有视觉锚点
 2. **kpi-card-row**（强烈推荐）：版本信息、关键数据用 3-4 列卡片
-3. **section-divider**（推荐）：每个一级章节前加分隔
+3. **section-divider**（推荐）：长文档每个一级章节前加分隔；`rich` 密度下用 light-blue / blue 的「本节导读」色块承接章节 thesis
 4. **before-after**（按需）：版本对比、机制对比
 5. **timeline**（按需）：版本/迭代/路线图
 6. **quote-block**（按需）：核心洞察、警句
 7. **action-items**（按需）：升级清单、检查项
+
+## 章节节奏
+
+- 大段解释、H2 主章节：用 `---` + 蓝色章节标题 + 单个导读 callout，让读者明确进入新主题。
+- 小段解释、H3/H4 机制说明：用 `A → B → C` 数据流、短表格、普通列表或细分割线，不要连续堆多个 callout。
+- 技术链路推荐写成一行或两行：`资产导入 → Cluster 构建 → HZB 遮挡裁剪 → Nanite 光栅化 → GBuffer`。
+- 一屏内最多 1 个章节导读块；如果已经有风险/结论 callout，普通解释段落降级为加粗或数据流。
 
 ## 反模式
 

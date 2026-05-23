@@ -28,6 +28,17 @@ describe("enhancement suggestions", () => {
     expect(output).toContain("xychart-beta");
   });
 
+  it("keeps draft artifacts outside enhancement callouts", () => {
+    const output = beautifyMarkdown("## 指标趋势\n\n转化率从 10% 到 15%。\n", {
+      enhancements: "draft"
+    });
+
+    const calloutEnd = output.indexOf("</callout>");
+    const artifactStart = output.indexOf("```mermaid");
+    expect(calloutEnd).toBeGreaterThan(-1);
+    expect(artifactStart).toBeGreaterThan(calloutEnd);
+  });
+
   it("suggests image card workflows for Xiaohongshu content", () => {
     const output = beautifyMarkdown("## 小红书发布\n\n这是一篇活动复盘。\n", {
       enhancements: "draft"

@@ -2,13 +2,18 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 
-const pairs = [
-  {
-    name: "Claude Code",
-    source: "skills/lark-beautifier",
-    target: ".claude/skills/lark-beautifier"
-  }
-];
+const sourceRoot = "skills";
+const targetRoot = ".claude/skills";
+const skillNames = (await readdir(sourceRoot, { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
+
+const pairs = skillNames.map((skillName) => ({
+  name: `Claude Code ${skillName}`,
+  source: join(sourceRoot, skillName),
+  target: join(targetRoot, skillName)
+}));
 
 const mismatches = [];
 

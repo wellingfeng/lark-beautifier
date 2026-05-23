@@ -53,6 +53,20 @@ describe("component injection", () => {
     expect(output).toContain("\n---\n");
   });
 
+  it("uses colored guide blocks for rich section dividers", async () => {
+    const source = await loadFixture("release-notes-with-tldr.md");
+    const output = beautifyMarkdown(source, {
+      mode: "structured",
+      components: "auto",
+      theme: "technical-blue",
+      visualDensity: "rich"
+    });
+
+    expect(output).toContain("**本节导读**");
+    expect(output).toContain('<callout emoji="📌" background-color="light-blue" border-color="blue">');
+    expect(output).toContain("新版本默认开启 Mesh Shader");
+  });
+
   it("does not emit dividers on short documents", async () => {
     const source = await loadFixture("short-doc-no-dividers.md");
     const output = beautifyMarkdown(source, {
