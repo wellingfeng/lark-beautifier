@@ -1,0 +1,51 @@
+{
+  "name": "lark-beautifier",
+  "version": "0.1.0",
+  "description": "Beautify Feishu/Lark documents and Markdown with safe visual polish and dry-run-first OpenAPI write-back helpers.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wellingfeng/lark-beautifier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wellingfeng/lark-beautifier/issues"
+  },
+  "homepage": "https://github.com/wellingfeng/lark-beautifier#readme",
+  "type": "module",
+  "bin": {
+    "lark-beautifier": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "DEVELOPMENT_PLAN.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"!node_modules\" \"!tmp\" \"!dist\"",
+    "dev": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "diff": "^8.0.2",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^24.10.1",
+    "markdownlint-cli2": "^0.22.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
